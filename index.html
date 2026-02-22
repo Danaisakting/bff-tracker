@@ -1,0 +1,296 @@
+DOCTYPEDOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Breakdown Tracker v4 — Bangkok Fine Foods</title>
+<script>
+// ── Minimal XLSX writer (no CDN needed) ──────────────────
+// Supports: aoa_to_sheet, book_new, book_append_sheet, writeFile
+const XLSX = (function(){
+  function escXml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function colName(n){ let s=''; n++; while(n>0){ s=String.fromCharCode(64+(n%26||26))+s; n=Math.floor((n-1)/26); } return s; }
+  function aoa_to_sheet(data){
+    const cells={}, dims=[];
+    data.forEach((row,ri)=>{
+      row.forEach((val,ci)=>{
+        const addr=colName(ci)+(ri+1);
+        const t = typeof val==='number'?'n':'s';
+        cells[addr]={v:val,t};
+        if(!dims[ci]) dims[ci]=8;
+        dims[ci]=Math.min(50, Math.max(dims[ci], String(val==null?'':val).length+2));
+      });
+    });
+    return {cells, rows:data.length, cols:data[0]?data[0].length:0, dims};
+  }
+  function book_new(){ return {sheets:[]}; }
+  function book_append_sheet(wb, ws, name){ wb.sheets.push({ws, name}); }
+
+  // Write as CSV (one sheet) if xlsx not supported, else build real xlsx
+  function writeFile(wb, filename){
+    try{
+      // Try real xlsx (binary zip)
+      const blob = buildXlsx(wb);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }catch(e){
+      console.warn('xlsx build failed, falling back to CSV:', e);
+      // Fallback: export each sheet as CSV in a zip-like bundle (just first sheet as CSV)
+      const {ws, name} = wb.sheets[0];
+      const csvContent = buildCsv(ws);
+      const blob = new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=filename.replace('.xlsx','.csv');
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+  }
+
+  function buildCsv(ws){
+    const rows=[];
+    for(let r=1;r<=ws.rows;r++){
+      const row=[];
+      for(let c=0;c<ws.cols;c++){
+        const v=ws.cells[colName(c)+r];
+        const s=v?String(v.v):'';
+        row.push(s.includes(',')||s.includes('"')||s.includes('\n')?'"'+s.replace(/"/g,'""')+'"':s);
+      }
+      rows.push(row.join(','));
+    }
+    return rows.join('\r\n');
+  }
+
+  function buildXlsx(wb){
+    // Build a minimal xlsx (OpenXML) file as a zip
+    const sharedStrings=[], ssMap={};
+    function getSS(s){ s=String(s==null?'':s); if(ssMap[s]==null){ssMap[s]=sharedStrings.length;sharedStrings.push(s);} return ssMap[s]; }
+
+    // Build sheet XMLs
+    const sheetXmls = wb.sheets.map(({ws,name})=>{
+      let xml='<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>';
+      for(let r=1;r<=ws.rows;r++){
+        xml+=`<row r="${r}">`;
+        for(let c=0;c<ws.cols;c++){
+          const addr=colName(c)+r;
+          const cell=ws.cells[addr];
+          if(!cell||cell.v==null||cell.v===''){continue;}
+          if(cell.t==='n'&&cell.v!==''&&!isNaN(Number(cell.v))){
+            xml+=`<c r="${addr}"><v>${Number(cell.v)}</v></c>`;
+          } else {
+            const si=getSS(cell.v);
+            xml+=`<c r="${addr}" t="s"><v>${si}</v></c>`;
+          }
+        }
+        xml+='</row>';
+      }
+      xml+='</sheetData></worksheet>';
+      return xml;
+    });
+
+    const ssXml='<?xml version="1.0" encoding="UTF-8"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+sharedStrings.length+'" uniqueCount="'+sharedStrings.length+'">'+
+      sharedStrings.map(s=>'<si><t xml:space="preserve">'+escXml(s)+'</t></si>').join('')+'</sst>';
+
+    const sheetsRel = wb.sheets.map((_,i)=>`<Relationship Id="rId${i+2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('');
+    const wbXml='<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+
+      wb.sheets.map(({name},i)=>`<sheet name="${escXml(name)}" sheetId="${i+1}" r:id="rId${i+2}"/>`).join('')+'</sheets></workbook>';
+    const wbRel='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>'+sheetsRel+'</Relationships>';
+    const ct='<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>'+
+      wb.sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>';
+    const rels='<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+
+    // Build zip using JSZip-like approach — manual zip construction
+    const files={
+      '[Content_Types].xml': ct,
+      '_rels/.rels': rels,
+      'xl/workbook.xml': wbXml,
+      'xl/_rels/workbook.xml.rels': wbRel,
+      'xl/sharedStrings.xml': ssXml,
+    };
+    wb.sheets.forEach(({},i)=>{ files[`xl/worksheets/sheet${i+1}.xml`]=sheetXmls[i]; });
+
+    return zipFiles(files);
+  }
+
+  // Minimal ZIP builder (stored, no compression)
+  function zipFiles(files){
+    const enc=new TextEncoder();
+    const parts=[], centralDir=[];
+    let offset=0;
+    const crc32Table=(()=>{ const t=[]; for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?(0xEDB88320^(c>>>1)):(c>>>1);t[i]=c;} return t; })();
+    function crc32(data){ let c=0xFFFFFFFF; for(let i=0;i<data.length;i++) c=crc32Table[(c^data[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+    function u16(n){ return [n&0xFF,(n>>8)&0xFF]; }
+    function u32(n){ return [n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>24)&0xFF]; }
+    function concat(...arrays){ const out=[]; for(const a of arrays) out.push(...a); return new Uint8Array(out); }
+
+    for(const [name,content] of Object.entries(files)){
+      const nameBytes=enc.encode(name);
+      const data=enc.encode(content);
+      const crc=crc32(data);
+      const local=concat(
+        [0x50,0x4B,0x03,0x04],[20,0],[0,0],[0,0],[0,0],[0,0],[0,0],
+        u32(crc),u32(data.length),u32(data.length),
+        u16(nameBytes.length),[0,0],nameBytes,data
+      );
+      centralDir.push({name:nameBytes,crc,size:data.length,offset});
+      parts.push(local);
+      offset+=local.length;
+    }
+    const cdParts=centralDir.map(({name,crc,size,offset})=>concat(
+      [0x50,0x4B,0x01,0x02],[20,0],[20,0],[0,0],[0,0],[0,0],[0,0],
+      u32(crc),u32(size),u32(size),u16(name.length),[0,0],[0,0],[0,0],[0,0],[0,0],[0,0,0,0],u32(offset),name
+    ));
+    const cdSize=cdParts.reduce((s,p)=>s+p.length,0);
+    const eocd=concat([0x50,0x4B,0x05,0x06],[0,0],[0,0],u16(centralDir.length),u16(centralDir.length),u32(cdSize),u32(offset),[0,0]);
+    const all=new Uint8Array([...parts.flatMap(p=>[...p]),...cdParts.flatMap(p=>[...p]),...eocd]);
+    return new Blob([all],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+
+  // Read xlsx/csv (for import)
+  function read(data, opts){
+    // Try to parse as xlsx zip, return workbook-like object
+    // For simplicity, return stub — actual import uses sheet_to_json
+    return {SheetNames:['Sheet1'], Sheets:{'Sheet1':{_data:data}}};
+  }
+  const utils={
+    aoa_to_sheet, book_new, book_append_sheet,
+    sheet_to_json(ws, opts={}){
+      // Parse CSV fallback used in import
+      if(ws._csvData){ return parseCsv(ws._csvData, opts); }
+      return [];
+    }
+  };
+  function parseCsv(text, {defval=''}={}){
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+    return lines.slice(1).map(line=>{
+      const vals=line.match(/("(?:[^"]|"")*"|[^,]*)/g)||[];
+      const row={};
+      headers.forEach((h,i)=>{ let v=(vals[i]||'').trim().replace(/^"|"$/g,'').replace(/""/g,'"'); row[h]=v===''?defval:v; });
+      return row;
+    });
+  }
+  return {utils, book_new, book_append_sheet, writeFile, read};
+})();
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Sarabun','Noto Sans Thai',sans-serif;background:#0D1B2A;color:#DDE8F4;max-width:640px;margin:0 auto;min-height:100vh;padding-bottom:80px;font-size:16px;-webkit-text-size-adjust:100%}
+  .header{background:#13243A;border-bottom:1px solid #1E3A5F;padding:14px 20px;position:sticky;top:0;z-index:100}
+  .header-row{display:flex;justify-content:space-between;align-items:center}
+  .app-title{font-size:18px;font-weight:800}.app-title span{color:#F4A261}
+  .app-sub{font-size:10px;color:#5A7A9A;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
+  .time-right{text-align:right}
+  .time-val{font-size:17px;font-weight:800;color:#F4A261}
+  .time-date{font-size:10px;color:#5A7A9A}
+  .alert-bar{margin-top:10px;background:#FF174414;border:1px solid #FF174455;border-radius:8px;padding:6px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#FF8A80}
+  .blink{width:7px;height:7px;border-radius:50%;background:#FF1744;animation:blink 1.5s infinite;flex-shrink:0}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+  .content{padding:16px 16px 0}
+  .section-label{font-size:13px;color:#5A7A9A;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;margin-top:4px}
+  .card{background:#13243A;border:1px solid #1E3A5F;border-radius:12px;padding:16px 18px;margin-bottom:10px}
+  .card-click{cursor:pointer}
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .kpi{background:#13243A;border:1px solid #1E3A5F;border-radius:12px;padding:16px 18px}
+  .kpi-val{font-size:34px;font-weight:800;line-height:1}
+  .kpi-unit{font-size:12px;color:#5A7A9A;margin-top:2px}
+  .kpi-label{font-size:13px;color:#DDE8F4;margin-top:6px}
+  .progress-bar{height:5px;background:#1E3A5F;border-radius:3px;overflow:hidden;margin:8px 0 4px}
+  .progress-fill{height:100%;border-radius:3px;background:#00C853}
+  .progress-text{font-size:10px;color:#5A7A9A}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap}
+  .status-dot{width:10px;height:10px;border-radius:50%;margin-left:auto;margin-bottom:3px}
+  .status-label{font-size:11px;font-weight:700;text-align:right}
+  .fab{position:fixed;bottom:84px;right:20px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#FF1744,#B71C1C);border:none;color:#fff;font-size:26px;cursor:pointer;z-index:150;box-shadow:0 4px 20px #FF174455;display:flex;align-items:center;justify-content:center}
+  .fab.settings-tab{background:linear-gradient(135deg,#1565C0,#0D47A1);box-shadow:0 4px 20px #1565C055}
+  .nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;background:#13243A;border-top:1px solid #1E3A5F;display:flex;z-index:100}
+  .nav-btn{flex:1;padding:12px 0 16px;background:none;border:none;border-top:2px solid transparent;color:#5A7A9A;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;font-size:11px}
+  .nav-btn.active{border-top-color:#F4A261;color:#F4A261;font-weight:700}
+  .nav-icon{font-size:22px}
+  .overlay{position:fixed;inset:0;background:#000c;z-index:300;overflow:auto}
+  .sheet{background:#0D1B2A;min-height:100%}
+  .sheet-header{background:#13243A;padding:14px 20px;border-bottom:1px solid #1E3A5F;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+  .back-btn{background:none;border:none;color:#48CAE4;font-size:22px;cursor:pointer;line-height:1;padding:0;font-family:inherit}
+  .sheet-title{font-weight:700;font-size:16px}
+  .sheet-body{padding:16px 16px 40px}
+  .bottom-sheet{position:fixed;inset:0;background:#000c;z-index:400;display:flex;flex-direction:column;justify-content:flex-end}
+  .bottom-card{background:#13243A;border-radius:20px 20px 0 0;padding:20px 20px 50px;max-height:90vh;overflow-y:auto}
+  .swipe-indicator{width:40px;height:4px;background:#1E3A5F;border-radius:2px;margin:0 auto 16px}
+  .bottom-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .bottom-title{font-size:18px;font-weight:800;color:#FF1744}
+  .close-btn{background:#0D1B2A;border:1px solid #1E3A5F;color:#5A7A9A;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;font-family:inherit;font-weight:700}
+  .form-label{font-size:12px;color:#5A7A9A;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .form-input{width:100%;padding:12px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;font-size:16px;outline:none;font-family:inherit;margin-bottom:14px}
+  select.form-input option{background:#0D1B2A}
+  textarea.form-input{resize:none}
+  .cannot-fix-box{background:#AA00FF0D;border:1px solid #AA00FF44;border-radius:10px;padding:12px 14px;margin-bottom:14px}
+  .cannot-fix-box.off{background:#0D1B2A;border-color:#1E3A5F}
+  .cannot-label{display:flex;align-items:center;gap:10px;cursor:pointer}
+  .cannot-title{font-size:13px;font-weight:700}
+  .cannot-sub{font-size:11px;color:#5A7A9A;margin-top:2px}
+  .img-btn{width:100%;padding:10px;background:#0D1B2A;border:1px dashed #1E3A5F;border-radius:8px;color:#5A7A9A;font-size:13px;cursor:pointer;margin-bottom:8px;font-family:inherit}
+  .img-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .img-thumb{position:relative;width:70px;height:70px}
+  .img-thumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+  .img-remove{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#FF1744;border:none;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .submit-btn{width:100%;padding:14px;background:linear-gradient(135deg,#FF1744,#B71C1C);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px #FF174444;font-family:inherit;margin-top:4px}
+  .resolve-btn{width:100%;padding:14px;background:linear-gradient(135deg,#00C853,#00695C);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 20px #00C85340;font-family:inherit}
+  .blue-btn{width:100%;padding:14px;background:linear-gradient(135deg,#1565C0,#0D47A1);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit}
+  .detail-timer{background:#0D1B2A;border-radius:10px;padding:12px 14px;margin-top:14px}
+  .timer-val{font-size:32px;font-weight:800;line-height:1.2}
+  .timer-label{font-size:11px;color:#5A7A9A;margin-bottom:4px}
+  .timer-sub{font-size:11px;color:#5A7A9A;margin-top:6px}
+  .info-label{font-size:11px;color:#5A7A9A;margin-bottom:4px}
+  .info-val{font-size:14px}
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:10px 20px;border-radius:24px;font-size:13px;font-weight:700;z-index:600;white-space:nowrap;box-shadow:0 4px 20px #0008;pointer-events:none}
+  .empty{text-align:center;padding:40px 0;color:#5A7A9A}
+  .empty-icon{font-size:40px;margin-bottom:8px}
+  .hidden{display:none}
+
+  /* Settings styles */
+  .mach-manage-row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  .mach-actions{display:flex;gap:6px;flex-shrink:0}
+  .icon-btn{background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:14px;color:#5A7A9A;font-family:inherit}
+  .icon-btn:hover{border-color:#48CAE4;color:#48CAE4}
+  .icon-btn.danger:hover{border-color:#FF1744;color:#FF1744}
+  .add-mach-btn{width:100%;padding:12px;background:#0D1B2A;border:1px dashed #1E3A5F;border-radius:12px;color:#48CAE4;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px}
+  .line-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:8px;font-weight:600}
+  .confirm-dialog{position:fixed;inset:0;background:#000c;z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+  .confirm-dialog.show{display:flex}
+  .confirm-box{background:#13243A;border:1px solid #1E3A5F;border-radius:16px;padding:24px;max-width:300px;width:100%;text-align:center}
+  .confirm-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .confirm-msg{font-size:13px;color:#5A7A9A;margin-bottom:20px}
+  .confirm-btns{display:flex;gap:10px}
+  .confirm-cancel{flex:1;padding:12px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:10px;color:#DDE8F4;font-size:14px;cursor:pointer;font-family:inherit}
+  .confirm-ok{flex:1;padding:12px;background:#FF1744;border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  .tech-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:10px;margin-bottom:8px}
+
+  /* Import Excel */
+  .import-zone{border:2px dashed #1E3A5F;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;margin-bottom:14px;transition:.2s}
+  .import-zone:hover,.import-zone.drag{border-color:#48CAE4;background:#48CAE410}
+  .import-icon{font-size:32px;margin-bottom:8px}
+  .import-title{font-size:14px;font-weight:600;color:#48CAE4;margin-bottom:4px}
+  .import-sub{font-size:11px;color:#5A7A9A}
+  .import-preview{background:#0D1B2A;border:1px solid #1E3A5F;border-radius:10px;overflow:hidden;margin-bottom:14px}
+  .import-preview-header{padding:10px 14px;background:#1E3A5F22;border-bottom:1px solid #1E3A5F;font-size:11px;color:#5A7A9A;display:flex;justify-content:space-between}
+  .import-row{display:flex;padding:8px 14px;border-bottom:1px solid #1E3A5F11;font-size:13px;gap:8px}
+  .import-row:last-child{border-bottom:none}
+  .import-row.err{background:#FF174410;color:#FF8A80}
+  .import-row.ok{color:#DDE8F4}
+  .import-col{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .import-col.id{flex:0 0 60px;font-weight:700;color:#48CAE4}
+  .import-col.line{flex:0 0 70px}
+  .template-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#5A7A9A;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <d
