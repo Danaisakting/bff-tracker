@@ -470,7 +470,7 @@ const XLSX = (function(){
         ไม่บังคับ: partNumber · manufacturer · max · location · machines
       </div>
 
-      <input type="file" id="spare-excel-file" accept=".csv" style="display:none" onchange="handleSpareExcel(this)">
+      <input type="file" id="spare-excel-file" accept=".xlsx,.csv" style="display:none" onchange="handleSpareExcel(this)">
       <div class="import-zone" id="spare-drop-zone"
         onclick="document.getElementById('spare-excel-file').click()"
         ondragover="event.preventDefault();this.classList.add('drag')"
@@ -478,7 +478,7 @@ const XLSX = (function(){
         ondrop="handleSpareDrop(event)">
         <div class="import-icon">📊</div>
         <div class="import-title">แตะเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</div>
-        <div class="import-sub">.csv (CSV UTF-8)</div>
+        <div class="import-sub">.xlsx หรือ .csv</div>
       </div>
 
       <div id="spare-import-preview" class="hidden"></div>
@@ -593,11 +593,11 @@ const XLSX = (function(){
       <button class="template-btn" onclick="downloadTemplate()">⬇️ ดาวน์โหลด Template (.xlsx)</button>
 
       <div style="font-size:11px;color:#5A7A9A;margin-bottom:10px">
-        คอลัมน์ที่ต้องการ: <span style="color:#48CAE4">id</span> · <span style="color:#48CAE4">name</span> · <span style="color:#48CAE4">line</span> · area (ไม่บังคับ)
+        คอลัมน์: <span style="color:#48CAE4">id *</span> · <span style="color:#48CAE4">name *</span> · <span style="color:#48CAE4">line *</span> · area (ไม่บังคับ) — รองรับ .xlsx และ .csv
       </div>
 
       <!-- Drop Zone -->
-      <input type="file" id="excel-file" accept=".csv" style="display:none" onchange="handleExcelFile(this)">
+      <input type="file" id="excel-file" accept=".xlsx,.csv" style="display:none" onchange="handleExcelFile(this)">
       <div class="import-zone" id="drop-zone"
         onclick="document.getElementById('excel-file').click()"
         ondragover="event.preventDefault();this.classList.add('drag')"
@@ -605,7 +605,7 @@ const XLSX = (function(){
         ondrop="handleDrop(event)">
         <div class="import-icon">📊</div>
         <div class="import-title">แตะเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</div>
-        <div class="import-sub">.csv (CSV UTF-8)</div>
+        <div class="import-sub">.xlsx หรือ .csv</div>
       </div>
 
       <!-- Preview -->
@@ -2346,18 +2346,112 @@ function handleSpareExcel(input){
   if(input.files[0]) parseSpareExcel(input.files[0]);
 }
 
+// ── XLSX File Reader (standalone, no CDN) ─────────────────
+function xlsxReadFile(arrayBuffer){
+  try{
+    const data=new Uint8Array(arrayBuffer);
+    function u16(d,o){return d[o]|(d[o+1]<<8);}
+    function u32(d,o){return(d[o]|(d[o+1]<<8)|(d[o+2]<<16)|(d[o+3]<<24))>>>0;}
+    const dec=new TextDecoder('utf-8');
+    const files={};
+    let i=0;
+    while(i<data.length-4){
+      if(data[i]===0x50&&data[i+1]===0x4B&&data[i+2]===0x03&&data[i+3]===0x04){
+        const fnLen=u16(data,i+26), extraLen=u16(data,i+28), compSize=u32(data,i+18);
+        const fname=dec.decode(data.slice(i+30,i+30+fnLen));
+        const start=i+30+fnLen+extraLen;
+        if(fname.endsWith('.xml')||fname.endsWith('.rels'))
+          files[fname]=dec.decode(data.slice(start,start+compSize));
+        i=start+compSize;
+      } else { i++; }
+    }
+    const ss=[];
+    const ssXml=files['xl/sharedStrings.xml']||'';
+    const siRe=new RegExp('<si>[\s\S]*?<\/si>','g');
+    let sm;
+    while((sm=siRe.exec(ssXml))!==null){
+      const t=sm[0].match(new RegExp('<t[^>]*>([^<]*)<\/t>','g'))||[];
+      ss.push(t.map(x=>x.replace(new RegExp('<t[^>]*>'),'').replace(new RegExp('<\/t>'),'') ).join(''));
+    }
+    const wbXml=files['xl/workbook.xml']||'';
+    const sheetNames=[];
+    const snRe=new RegExp('<sheet[^>]+name="([^"]*)"[^>]+r:id="([^"]*)"','g');
+    let snm;
+    while((snm=snRe.exec(wbXml))!==null) sheetNames.push({name:snm[1],rId:snm[2]});
+    const wbRel=files['xl/_rels/workbook.xml.rels']||'';
+    const relMap={};
+    const relRe=new RegExp('<Relationship[^>]+Id="([^"]*)"[^>]+Target="([^"]*)"','g');
+    let rlm;
+    while((rlm=relRe.exec(wbRel))!==null) relMap[rlm[1]]=rlm[2];
+    const wb={SheetNames:sheetNames.map(s=>s.name),Sheets:{}};
+    sheetNames.forEach(function(s){
+      var target=relMap[s.rId]||'';
+      if(!target.startsWith('xl/')) target='xl/'+target;
+      wb.Sheets[s.name]={_shXml:files[target]||'',_ss:ss};
+    });
+    return wb;
+  }catch(e){ console.warn('xlsxReadFile error:',e); return null; }
+}
+
+function xlsxSheetToJson(wb, sheetName, rangeOffset){
+  try{
+    var ws=wb.Sheets[sheetName]||wb.Sheets[wb.SheetNames[0]];
+    if(!ws||!ws._shXml) return [];
+    var xml=ws._shXml, ss=ws._ss||[], cells={};
+    var rowRe=new RegExp('<row[^>]+r="(\d+)"[^>]*>([\s\S]*?)<\/row>','g'), rm;
+    while((rm=rowRe.exec(xml))!==null){
+      var cellRe=new RegExp('<c[^>]+r="([A-Z]+\d+)"([^>]*)>([\s\S]*?)<\/c>','g'), cm;
+      while((cm=cellRe.exec(rm[2]))!==null){
+        var addr=cm[1], attrs=cm[2], inner=cm[3], val='';
+        if(attrs.indexOf('t="inlineStr"')>=0){
+          var tv=inner.match(new RegExp('<t[^>]*>([^<]*)<\/t>')); val=tv?tv[1]:'';
+        } else {
+          var vv=inner.match(new RegExp('<v>([^<]*)<\/v>'));
+          if(vv) val=attrs.indexOf('t="s"')>=0?(ss[parseInt(vv[1])]||''):vv[1];
+        }
+        cells[addr]=val;
+      }
+    }
+    var addrs=Object.keys(cells); if(!addrs.length) return [];
+    function cn(s){var n=0;for(var c of s)n=n*26+(c.charCodeAt(0)-64);return n;}
+    function pa(a){var m=a.match(/([A-Z]+)(\d+)/);return[cn(m[1]),parseInt(m[2])];}
+    var cols=addrs.map(function(a){return pa(a)[0];}), rows2=addrs.map(function(a){return pa(a)[1];});
+    var minR=Math.min.apply(null,rows2), maxR=Math.max.apply(null,rows2);
+    var minC=Math.min.apply(null,cols), maxC=Math.max.apply(null,cols);
+    function colN(n){var s='';while(n>0){s=String.fromCharCode(64+(n%26||26))+s;n=Math.floor((n-1)/26);}return s;}
+    var hdrRow=minR+(rangeOffset||0), headers=[];
+    for(var c=minC;c<=maxC;c++) headers.push((cells[colN(c)+hdrRow]||'').replace(/\s*\*$/,'').trim());
+    var result=[];
+    for(var r=hdrRow+1;r<=maxR;r++){
+      var row={}, hasData=false;
+      headers.forEach(function(h,ci){
+        var v=cells[colN(minC+ci)+r]; v=(v!==undefined?String(v):'');
+        row[h]=v; if(v) hasData=true;
+      });
+      if(hasData) result.push(row);
+    }
+    return result;
+  }catch(e){ console.warn('xlsxSheetToJson error:',e); return []; }
+}
+
+
 function parseSpareExcel(file){
-  const isCsv = file.name.toLowerCase().endsWith('.csv');
+  const name = file.name.toLowerCase();
   const reader = new FileReader();
   reader.onload = function(e){
     try{
-      if(isCsv){
-        // Parse CSV directly
+      if(name.endsWith('.xlsx')){
+        const wb = xlsxReadFile(e.target.result);
+        if(!wb){ showToast('⚠️ ไม่สามารถอ่านไฟล์ .xlsx ได้',false); return; }
+        const sheetName = wb.SheetNames.find(s=>s.toLowerCase().includes('spare'))||wb.SheetNames[0];
+        const json = xlsxSheetToJson(wb, sheetName, 2);
+        processSpareImport(json);
+      } else if(name.endsWith('.csv')){
         const text = e.target.result;
-        const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
-        if(lines.length<2){ showToast('⚠️ ไฟล์ CSV ว่างเปล่า',false); return; }
-        const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-        const json = lines.slice(1).map(line=>{
+        const lines2 = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
+        if(lines2.length<2){ showToast('⚠️ ไฟล์ CSV ว่างเปล่า',false); return; }
+        const headers = lines2[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+        const json = lines2.slice(1).map(line=>{
           const vals=[];
           let cur='', inQ=false;
           for(let i=0;i<line.length;i++){
@@ -2373,17 +2467,15 @@ function parseSpareExcel(file){
         });
         processSpareImport(json);
       } else {
-        showToast('⚠️ กรุณาใช้ไฟล์ .csv (ไม่รองรับ .xlsx โดยตรง)\nExport จาก Excel เป็น CSV ก่อน',false);
+        showToast('⚠️ รองรับเฉพาะไฟล์ .xlsx และ .csv',false);
       }
     } catch(err){
       showToast('⚠️ ไม่สามารถอ่านไฟล์ได้: '+err.message, false);
     }
   };
-  if(file.name.toLowerCase().endsWith('.csv')){
-    reader.readAsText(file, 'UTF-8');
-  } else {
-    showToast('⚠️ กรุณาใช้ไฟล์ .csv\n(Excel → Save As → CSV UTF-8)',false);
-  }
+  if(name.endsWith('.xlsx')) reader.readAsArrayBuffer(file);
+  else if(name.endsWith('.csv')) reader.readAsText(file, 'UTF-8');
+  else showToast('⚠️ รองรับเฉพาะไฟล์ .xlsx และ .csv',false);
 }
 
 function processSpareImport(json){
@@ -2488,18 +2580,16 @@ function confirmSpareImport(){
 }
 
 function downloadSpareTemplate(){
+  const wb=XLSX.book_new();
   const rows=[
-    ['code','partNumber','name','manufacturer','category','unit','stock','min','max','location','machines'],
+    ['code *','partNumber','name *','manufacturer','category','unit *','stock','min','max','location','machines'],
     ['SP011','BA-2040','Blade Assembly','Acme Tools','Blades','ชิ้น',5,3,10,'Shelf A-1','M003,M004'],
     ['SP012','','Belt Drive 20mm','','Belts','เมตร',15,8,25,'Shelf B-5','M001,M002'],
     ['SP013','6205-2RS1','Bearing 6205','SKF','Bearings','ชิ้น',20,10,40,'Shelf C-3','ALL'],
   ];
-  const csv='\uFEFF'+rows.map(r=>r.map(v=>String(v).includes(',')?'"'+v+'"':v).join(',')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='spare_parts_template.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  XLSX.book_append_sheet(wb,ws,'spare_parts');
+  XLSX.writeFile(wb,'spare_parts_template.xlsx');
 }
 
 // ── IMPORT EXCEL ──────────────────────────────────────────
@@ -2532,10 +2622,17 @@ function handleExcelFile(input){
 }
 
 function parseExcel(file){
+  const name=file.name.toLowerCase();
   const reader=new FileReader();
   reader.onload=function(e){
     try{
-      if(file.name.toLowerCase().endsWith('.csv')){
+      if(name.endsWith('.xlsx')){
+        const wb=xlsxReadFile(e.target.result);
+        if(!wb){ showToast('⚠️ ไม่สามารถอ่านไฟล์ .xlsx ได้',false); return; }
+        const sheetName=wb.SheetNames.find(s=>s.toLowerCase().includes('machine'))||wb.SheetNames[0];
+        const json=xlsxSheetToJson(wb, sheetName, 2);
+        processImportData(json);
+      } else if(name.endsWith('.csv')){
         const text=e.target.result.replace(/^\uFEFF/,'');
         const lines=text.split(/\r?\n/).filter(l=>l.trim());
         if(lines.length<2){ showToast('⚠️ ไฟล์ว่างเปล่า',false); return; }
@@ -2555,17 +2652,15 @@ function parseExcel(file){
         });
         processImportData(json);
       } else {
-        showToast('⚠️ กรุณาใช้ไฟล์ .csv\n(Excel → Save As → CSV UTF-8)',false);
+        showToast('⚠️ รองรับเฉพาะไฟล์ .xlsx และ .csv',false);
       }
     } catch(err){
       showToast('⚠️ ไม่สามารถอ่านไฟล์ได้: '+err.message,false);
     }
   };
-  if(file.name.toLowerCase().endsWith('.csv')){
-    reader.readAsText(file,'UTF-8');
-  } else {
-    showToast('⚠️ กรุณาใช้ไฟล์ .csv\n(Excel → Save As → CSV UTF-8)',false);
-  }
+  if(name.endsWith('.xlsx')) reader.readAsArrayBuffer(file);
+  else if(name.endsWith('.csv')) reader.readAsText(file,'UTF-8');
+  else showToast('⚠️ รองรับเฉพาะไฟล์ .xlsx และ .csv',false);
 }
 
 function processImportData(json){
@@ -2663,18 +2758,16 @@ function confirmImport(){
 }
 
 function downloadTemplate(){
+  const wb=XLSX.book_new();
   const rows=[
-    ['id','name','line','area'],
+    ['id *','name *','line *','area'],
     ['M011','Pasteurizer #2','เนยแข็ง','Zone A'],
     ['M012','Yogurt Fermenter #3','โยเกิร์ต','Zone B'],
     ['M013','Packaging Line #2','ครีมชีส','Zone C'],
   ];
-  const csv='\uFEFF'+rows.map(r=>r.map(v=>String(v).includes(',')?'"'+v+'"':v).join(',')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a'); a.href=url; a.download='machine_template.csv';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  XLSX.book_append_sheet(wb,ws,'machines');
+  XLSX.writeFile(wb,'machine_template.xlsx');
 }
 
 // ── INIT ──────────────────────────────────────────────────
