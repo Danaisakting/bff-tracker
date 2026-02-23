@@ -1,4 +1,4 @@
-DOCTYPEDOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -293,4 +293,2394 @@ const XLSX = (function(){
 
 <!-- HEADER -->
 <div class="header">
-  <d
+  <div class="header-row">
+    <div>
+      <div class="app-sub">Bangkok Fine Foods</div>
+      <div class="app-title"><span>Break</span>down Tracker</div>
+    </div>
+    <div class="time-right">
+      <div class="time-date" id="hdr-date"></div>
+      <div class="time-val" id="hdr-time"></div>
+    </div>
+  </div>
+  <div class="alert-bar hidden" id="alert-bar">
+    <div class="blink"></div>
+    <span id="alert-text"></span>
+  </div>
+  <div id="fb-status-bar" style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11px;color:#5A7A9A">
+    <div id="fb-dot" style="width:7px;height:7px;border-radius:50%;background:#5A7A9A;flex-shrink:0"></div>
+    <span id="fb-status-text">กำลังเชื่อมต่อ Firebase...</span>
+  </div>
+</div>
+
+<!-- CONTENT PAGES -->
+<div class="content" id="page-dashboard"></div>
+<div class="content hidden" id="page-machines"></div>
+<div class="content hidden" id="page-spares"></div>
+<div class="content hidden" id="page-reports"></div>
+<div class="content hidden" id="page-history"></div>
+<div class="content hidden" id="page-settings"></div>
+
+<!-- DETAIL OVERLAY -->
+<div class="overlay hidden" id="detail-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeDetail()">←</button>
+      <div class="sheet-title">รายละเอียด Breakdown</div>
+    </div>
+    <div class="sheet-body" id="detail-body"></div>
+  </div>
+</div>
+
+<!-- MACHINE FORM OVERLAY -->
+<div class="overlay hidden" id="mach-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeMachForm()">←</button>
+      <div class="sheet-title" id="mach-form-title">เพิ่มเครื่องจักร</div>
+    </div>
+    <div class="sheet-body">
+      <label class="form-label">รหัสเครื่องจักร *</label>
+      <input class="form-input" id="mf-id" placeholder="เช่น M011" maxlength="10">
+
+      <label class="form-label">ชื่อเครื่องจักร *</label>
+      <input class="form-input" id="mf-name" placeholder="เช่น Pasteurizer #2">
+
+      <label class="form-label">ไลน์การผลิต *</label>
+      <select class="form-input" id="mf-line">
+        <option value="">-- เลือกไลน์ --</option>
+      </select>
+
+      <label class="form-label">Zone / พื้นที่ (ไม่บังคับ)</label>
+      <input class="form-input" id="mf-area" placeholder="เช่น Zone A">
+
+      <button class="blue-btn" onclick="saveMachine()" style="margin-top:4px">✓ บันทึกเครื่องจักร</button>
+    </div>
+  </div>
+</div>
+
+<!-- TECH FORM OVERLAY -->
+<div class="overlay hidden" id="tech-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeTechForm()">←</button>
+      <div class="sheet-title">จัดการช่างซ่อม</div>
+    </div>
+    <div class="sheet-body">
+      <label class="form-label">ชื่อช่างซ่อม *</label>
+      <input class="form-input" id="tf-name" placeholder="ชื่อ-นามสกุล ช่าง">
+      <button class="blue-btn" onclick="addTechnician()" style="margin-top:4px;margin-bottom:20px">+ เพิ่มช่าง</button>
+      <div class="section-label">รายชื่อช่างทั้งหมด</div>
+      <div id="tech-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LINE FORM OVERLAY -->
+<div class="overlay hidden" id="line-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeLineForm()">←</button>
+      <div class="sheet-title">จัดการไลน์การผลิต</div>
+    </div>
+    <div class="sheet-body">
+      <label class="form-label">ชื่อไลน์การผลิต *</label>
+      <input class="form-input" id="lf-name" placeholder="เช่น ไลน์ขนม / ไลน์เครื่องดื่ม">
+      <label class="form-label">สีประจำไลน์</label>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="icon-btn" onclick="document.getElementById('lf-color').value='#F4A261'" style="background:#F4A261;width:40px;height:40px;border-radius:8px"></button>
+        <button class="icon-btn" onclick="document.getElementById('lf-color').value='#48CAE4'" style="background:#48CAE4;width:40px;height:40px;border-radius:8px"></button>
+        <button class="icon-btn" onclick="document.getElementById('lf-color').value='#74C69D'" style="background:#74C69D;width:40px;height:40px;border-radius:8px"></button>
+        <button class="icon-btn" onclick="document.getElementById('lf-color').value='#CE93D8'" style="background:#CE93D8;width:40px;height:40px;border-radius:8px"></button>
+        <button class="icon-btn" onclick="document.getElementById('lf-color').value='#FFB74D'" style="background:#FFB74D;width:40px;height:40px;border-radius:8px"></button>
+        <button class="icon-btn" onclick="document.getElementById('lf-color').value='#64B5F6'" style="background:#64B5F6;width:40px;height:40px;border-radius:8px"></button>
+        <input type="color" id="lf-color" value="#F4A261" style="width:40px;height:40px;border:1px solid #1E3A5F;border-radius:8px;cursor:pointer">
+      </div>
+      <button class="blue-btn" onclick="addLine()" style="margin-top:4px;margin-bottom:20px" id="line-add-btn">+ เพิ่มไลน์</button>
+      <div class="section-label">รายชื่อไลน์ทั้งหมด</div>
+      <div id="line-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SPARE PART FORM OVERLAY -->
+<div class="overlay hidden" id="spare-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeSpareForm()">←</button>
+      <div class="sheet-title" id="spare-form-title">เพิ่มอะไหล่</div>
+    </div>
+    <div class="sheet-body">
+      <label class="form-label">รหัสอะไหล่ *</label>
+      <input class="form-input" id="sf-code" placeholder="เช่น SP001" maxlength="20">
+
+      <label class="form-label">Part Number (ไม่บังคับ)</label>
+      <input class="form-input" id="sf-partnum" placeholder="เช่น 6205-2RS1 หรือ A1234-5678">
+
+      <label class="form-label">ชื่ออะไหล่ *</label>
+      <input class="form-input" id="sf-name" placeholder="เช่น Blade Assembly">
+
+      <label class="form-label">ผู้ผลิต / Manufacturer (ไม่บังคับ)</label>
+      <input class="form-input" id="sf-manufacturer" placeholder="เช่น SKF, NSK, Siemens">
+
+      <label class="form-label">หมวดหมู่</label>
+      <select class="form-input" id="sf-category">
+        <option value="">-- เลือกหมวดหมู่ --</option>
+      </select>
+
+      <label class="form-label">หน่วยนับ *</label>
+      <select class="form-input" id="sf-unit">
+        <option value="">-- เลือกหน่วย --</option>
+      </select>
+
+      <label class="form-label">Stock ปัจจุบัน *</label>
+      <input class="form-input" type="number" id="sf-stock" value="0" min="0">
+
+      <label class="form-label">Stock ขั้นต่ำ (Min) *</label>
+      <input class="form-input" type="number" id="sf-min" value="0" min="0" placeholder="แจ้งเตือนเมื่อ Stock < Min">
+
+      <label class="form-label">Stock สูงสุด (Max)</label>
+      <input class="form-input" type="number" id="sf-max" value="" min="0" placeholder="ไม่บังคับ">
+
+      <label class="form-label">📍 ตำแหน่งเก็บ</label>
+      <input class="form-input" id="sf-location" placeholder="เช่น Shelf A-15 (ไม่บังคับ)">
+
+      <label class="form-label">🔧 เครื่องจักรที่ใช้</label>
+      <div style="font-size:11px;color:#5A7A9A;margin-bottom:8px">เลือกเครื่องที่ใช้อะไหล่นี้ (เว้นว่าง = ใช้ได้ทุกเครื่อง)</div>
+      <div id="sf-machines-list" style="max-height:200px;overflow-y:auto;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;padding:10px;margin-bottom:14px"></div>
+
+      <button class="blue-btn" onclick="saveSpare()">✓ บันทึกอะไหล่</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPARE IMPORT OVERLAY -->
+<div class="overlay hidden" id="spare-import-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeSpareImport()">←</button>
+      <div class="sheet-title">📥 Import อะไหล่จาก Excel</div>
+    </div>
+    <div class="sheet-body">
+
+      <button class="template-btn" onclick="downloadSpareTemplate()">⬇️ ดาวน์โหลด Template (.xlsx)</button>
+
+      <div style="font-size:11px;color:#5A7A9A;margin-bottom:10px">
+        คอลัมน์ที่ต้องการ: <span style="color:#48CAE4">code · name · category · unit · stock · min</span><br>
+        ไม่บังคับ: partNumber · manufacturer · max · location · machines
+      </div>
+
+      <input type="file" id="spare-excel-file" accept=".csv" style="display:none" onchange="handleSpareExcel(this)">
+      <div class="import-zone" id="spare-drop-zone"
+        onclick="document.getElementById('spare-excel-file').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleSpareDrop(event)">
+        <div class="import-icon">📊</div>
+        <div class="import-title">แตะเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</div>
+        <div class="import-sub">.csv (CSV UTF-8)</div>
+      </div>
+
+      <div id="spare-import-preview" class="hidden"></div>
+      <button class="blue-btn hidden" id="spare-import-btn" onclick="confirmSpareImport()">✓ นำเข้าอะไหล่</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- SPARE SELECTOR OVERLAY -->
+<div class="overlay hidden" id="spare-selector-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeSpareSelector()">←</button>
+      <div class="sheet-title">เลือกอะไหล่</div>
+    </div>
+    <div class="sheet-body">
+      <input type="text" id="spare-search" placeholder="🔍 ค้นหาอะไหล่..." onkeyup="renderSpareSelectorList()"
+        style="width:100%;padding:10px 14px;background:#13243A;border:1px solid #1E3A5F;border-radius:10px;color:#DDE8F4;font-size:14px;outline:none;margin-bottom:10px">
+      
+      <div id="spare-selector-list" style="max-height:60vh;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BREAKDOWN FORM -->
+<div class="bottom-sheet hidden" id="form-sheet" onclick="if(event.target===this) closeForm()">
+  <div class="bottom-card">
+    <div class="swipe-indicator"></div>
+    <div class="bottom-header">
+      <div class="bottom-title">⛔ รายงาน Breakdown</div>
+      <button class="close-btn" onclick="closeForm()" title="ปิด (หรือแตะด้านนอก)">✕</button>
+    </div>
+    <div style="font-size:11px;color:#5A7A9A;margin-bottom:14px;text-align:center">💡 แตะพื้นที่มืดด้านนอก หรือกด ✕ เพื่อปิดฟอร์ม</div>
+    <div style="font-size:12px;color:#5A7A9A;margin-bottom:20px" id="form-datetime"></div>
+    <label class="form-label">เครื่องจักร *</label>
+    <select class="form-input" id="f-machine"><option value="">-- เลือกเครื่องจักร --</option></select>
+    <label class="form-label">ระดับความรุนแรง</label>
+    <select class="form-input" id="f-severity">
+      <option value="Critical">Critical</option>
+      <option value="High">High</option>
+      <option value="Medium" selected>Medium</option>
+      <option value="Low">Low</option>
+    </select>
+    <label class="form-label">ประเภทความเสียหาย / สาเหตุ *</label>
+    <select class="form-input" id="f-cause">
+      <option value="">-- เลือกประเภท --</option>
+      <option>ระบบไฟฟ้า (Electrical)</option>
+      <option>ระบบกล (Mechanical)</option>
+      <option>ระบบลม (Pneumatic)</option>
+      <option>ระบบน้ำ (Hydraulic)</option>
+      <option>อุปกรณ์ควบคุม (Control/Sensor)</option>
+      <option>อุปกรณ์สึกหรอ (Wear & Tear)</option>
+      <option>PM ตามแผน (Planned Maintenance)</option>
+      <option>อื่นๆ (Others)</option>
+    </select>
+    <label class="form-label">รายละเอียดอาการ / ปัญหา *</label>
+    <textarea class="form-input" id="f-detail" rows="3" placeholder="อธิบายอาการที่พบ ส่วนที่เสียหาย และผลกระทบต่อการผลิต..."></textarea>
+    <label class="form-label">ผู้แจ้งซ่อม *</label>
+    <input class="form-input" id="f-reporter" type="text" placeholder="ชื่อ-นามสกุล หรือแผนก...">
+    <label class="form-label">ผู้รับผิดชอบ / ช่างซ่อม *</label>
+    <select class="form-input" id="f-tech"><option value="">-- เลือกช่าง --</option></select>
+    <label class="form-label">การดำเนินการ / แผนการซ่อม</label>
+    <textarea class="form-input" id="f-action" rows="2" placeholder="ขั้นตอนการซ่อม หรืออะไหล่ที่ต้องใช้..."></textarea>
+
+    <label class="form-label">📦 อะไหล่ที่ใช้ในการซ่อม</label>
+    <div style="font-size:11px;color:#5A7A9A;margin-bottom:8px">เลือกอะไหล่และระบุจำนวน (Stock จะถูกหักอัตโนมัติ)</div>
+    
+    <div id="quick-select-spares" style="margin-bottom:10px"></div>
+    
+    <button type="button" class="add-mach-btn" style="margin-bottom:10px" onclick="openSpareSelector()">＋ เพิ่มอะไหล่</button>
+    
+    <div id="selected-spares-list"></div>
+
+    <div class="cannot-fix-box off" id="cannot-box">
+      <label class="cannot-label">
+        <input type="checkbox" id="f-cannot" style="width:18px;height:18px;accent-color:#AA00FF" onchange="toggleCannot()">
+        <div>
+          <div class="cannot-title" id="cannot-title" style="color:#DDE8F4">🚫 ซ่อมไม่ได้ในขณะนี้</div>
+          <div class="cannot-sub">รออะไหล่ / รออนุมัติ / เกินความสามารถ</div>
+        </div>
+      </label>
+      <textarea class="form-input hidden" id="f-cannot-reason" rows="2" placeholder="ระบุเหตุผล..." style="margin-top:10px;margin-bottom:0"></textarea>
+    </div>
+    <label class="form-label">หมายเหตุเพิ่มเติม</label>
+    <textarea class="form-input" id="f-notes" rows="2" placeholder="ข้อมูลอื่นๆ ที่เกี่ยวข้อง..."></textarea>
+    <button class="submit-btn" onclick="submitForm()">✓ บันทึก Breakdown</button>
+  </div>
+</div>
+
+<!-- CONFIRM DIALOG -->
+<div class="confirm-dialog" id="confirm-dialog">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirm-title">ยืนยันการลบ</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">ยกเลิก</button>
+      <button class="confirm-ok" onclick="doConfirm()">ลบ</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT EXCEL OVERLAY -->
+<div class="overlay hidden" id="import-overlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <button class="back-btn" onclick="closeImport()">←</button>
+      <div class="sheet-title">📥 Import เครื่องจักรจาก Excel</div>
+    </div>
+    <div class="sheet-body">
+
+      <button class="template-btn" onclick="downloadTemplate()">⬇️ ดาวน์โหลด Template (.xlsx)</button>
+
+      <div style="font-size:11px;color:#5A7A9A;margin-bottom:10px">
+        คอลัมน์ที่ต้องการ: <span style="color:#48CAE4">id</span> · <span style="color:#48CAE4">name</span> · <span style="color:#48CAE4">line</span> · area (ไม่บังคับ)
+      </div>
+
+      <!-- Drop Zone -->
+      <input type="file" id="excel-file" accept=".csv" style="display:none" onchange="handleExcelFile(this)">
+      <div class="import-zone" id="drop-zone"
+        onclick="document.getElementById('excel-file').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleDrop(event)">
+        <div class="import-icon">📊</div>
+        <div class="import-title">แตะเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</div>
+        <div class="import-sub">.csv (CSV UTF-8)</div>
+      </div>
+
+      <!-- Preview -->
+      <div id="import-preview-area" class="hidden"></div>
+
+      <!-- Import Button -->
+      <button class="blue-btn hidden" id="import-confirm-btn" onclick="confirmImport()">
+        ✓ นำเข้าเครื่องจักร
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" id="fab-btn" onclick="fabClick()">+</button>
+
+<!-- BOTTOM NAV -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
+    <span class="nav-icon">📊</span>Dashboard
+  </button>
+  <button class="nav-btn" id="nav-machines" onclick="switchTab('machines')">
+    <span class="nav-icon">⚙️</span>เครื่องจักร
+  </button>
+  <button class="nav-btn" id="nav-spares" onclick="switchTab('spares')">
+    <span class="nav-icon">📦</span>อะไหล่
+  </button>
+  <button class="nav-btn" id="nav-reports" onclick="switchTab('reports')">
+    <span class="nav-icon">📈</span>รายงาน
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
+    <span class="nav-icon">📋</span>ประวัติ
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="switchTab('settings')">
+    <span class="nav-icon">🛠️</span>ตั้งค่า
+  </button>
+</nav>
+
+<!-- TOAST -->
+<div class="toast hidden" id="toast"></div>
+
+<script>
+// ── DEFAULT DATA ───────────────────────────────────────────
+const DEFAULT_MACHINES = [
+  // ── ไลน์เนยแข็ง ──
+  {id:'M001',name:'Pasteurizer เนยแข็ง',line:'เนยแข็ง',area:'Zone A'},
+  {id:'M002',name:'Separator / Cream Separator',line:'เนยแข็ง',area:'Zone A'},
+  {id:'M003',name:'Curd Cutter',line:'เนยแข็ง',area:'Zone A'},
+  {id:'M004',name:'Cheese Press #1',line:'เนยแข็ง',area:'Zone A'},
+  {id:'M005',name:'Cheese Press #2',line:'เนยแข็ง',area:'Zone A'},
+  {id:'M006',name:'Brine Tank',line:'เนยแข็ง',area:'Zone A'},
+  {id:'M007',name:'Vacuum Packaging เนยแข็ง',line:'เนยแข็ง',area:'Zone A'},
+  // ── ไลน์ครีมชีส ──
+  {id:'M008',name:'Pasteurizer ครีมชีส',line:'ครีมชีส',area:'Zone B'},
+  {id:'M009',name:'Separator Quark',line:'ครีมชีส',area:'Zone B'},
+  {id:'M010',name:'Cream Cheese Mixer #1',line:'ครีมชีส',area:'Zone B'},
+  {id:'M011',name:'Cream Cheese Mixer #2',line:'ครีมชีส',area:'Zone B'},
+  {id:'M012',name:'Feta Filling Machine',line:'ครีมชีส',area:'Zone B'},
+  {id:'M013',name:'Packaging ครีมชีส',line:'ครีมชีส',area:'Zone B'},
+  // ── ไลน์โยเกิร์ต ──
+  {id:'M014',name:'Pasteurizer โยเกิร์ต',line:'โยเกิร์ต',area:'Zone C'},
+  {id:'M015',name:'Yogurt Fermenter #1',line:'โยเกิร์ต',area:'Zone C'},
+  {id:'M016',name:'Yogurt Fermenter #2',line:'โยเกิร์ต',area:'Zone C'},
+  {id:'M017',name:'Yogurt Filling Machine',line:'โยเกิร์ต',area:'Zone C'},
+  {id:'M018',name:'Cup Sealing Machine',line:'โยเกิร์ต',area:'Zone C'},
+  // ── ระบบ Utilities ──
+  {id:'M019',name:'Boiler #1',line:'เนยแข็ง',area:'Utility'},
+  {id:'M020',name:'Chiller / Cooling Unit',line:'โยเกิร์ต',area:'Utility'},
+];
+
+const DEFAULT_TECHS = [
+  'สมชาย รักงาน',
+  'วิชาญ เก่งซ่อม',
+  'ประสิทธิ์ ไฟฟ้าดี',
+  'นิรันดร์ มือทอง',
+  'รัตนา ช่างเย็น',
+];
+
+const DEFAULT_SPARE_PARTS = [
+  // ── Bearings ──
+  {id:'SP001',code:'SP001',name:'Bearing 6205-2RS',partNumber:'6205-2RS1',manufacturer:'SKF',category:'Bearings',unit:'ชิ้น',currentStock:20,minStock:10,maxStock:40,location:'Shelf A-1',compatibleMachines:['M001','M008','M014']},
+  {id:'SP002',code:'SP002',name:'Bearing 6305-2RS',partNumber:'6305-2RS1',manufacturer:'SKF',category:'Bearings',unit:'ชิ้น',currentStock:12,minStock:6,maxStock:24,location:'Shelf A-1',compatibleMachines:['M004','M005','M010']},
+  {id:'SP003',code:'SP003',name:'Bearing 6004-2Z',partNumber:'6004-2Z',manufacturer:'FAG',category:'Bearings',unit:'ชิ้น',currentStock:8,minStock:5,maxStock:20,location:'Shelf A-2',compatibleMachines:[]},
+  // ── Seals & Gaskets ──
+  {id:'SP004',code:'SP004',name:'Mechanical Seal ปั๊ม',partNumber:'MS-40-316',manufacturer:'Flowserve',category:'Gaskets',unit:'ชุด',currentStock:6,minStock:4,maxStock:12,location:'Shelf B-1',compatibleMachines:['M001','M008','M014']},
+  {id:'SP005',code:'SP005',name:'O-Ring EPDM 50mm',partNumber:'OR-50-E',manufacturer:'Parker',category:'Gaskets',unit:'ชิ้น',currentStock:50,minStock:20,maxStock:100,location:'Shelf B-2',compatibleMachines:[]},
+  {id:'SP006',code:'SP006',name:'Gasket Aseptic Valve',partNumber:'GAV-25',manufacturer:'Alfa Laval',category:'Gaskets',unit:'ชิ้น',currentStock:3,minStock:6,maxStock:20,location:'Shelf B-3',compatibleMachines:['M001','M008']},
+  // ── Belts ──
+  {id:'SP007',code:'SP007',name:'V-Belt A42',partNumber:'A42',manufacturer:'Gates',category:'Belts',unit:'เส้น',currentStock:10,minStock:4,maxStock:20,location:'Shelf C-1',compatibleMachines:['M002','M009']},
+  {id:'SP008',code:'SP008',name:'V-Belt B68',partNumber:'B68',manufacturer:'Gates',category:'Belts',unit:'เส้น',currentStock:8,minStock:4,maxStock:16,location:'Shelf C-1',compatibleMachines:['M010','M011']},
+  // ── Electrical ──
+  {id:'SP009',code:'SP009',name:'Contactor 25A',partNumber:'LC1D25M7',manufacturer:'Schneider',category:'Electrical',unit:'ชิ้น',currentStock:4,minStock:2,maxStock:8,location:'Shelf D-1',compatibleMachines:[]},
+  {id:'SP010',code:'SP010',name:'Thermal Overload Relay',partNumber:'LRD16',manufacturer:'Schneider',category:'Electrical',unit:'ชิ้น',currentStock:3,minStock:2,maxStock:6,location:'Shelf D-1',compatibleMachines:[]},
+  {id:'SP011',code:'SP011',name:'Proximity Sensor 12mm',partNumber:'LJ12A3-4-Z/BX',manufacturer:'Pepperl+Fuchs',category:'Electrical',unit:'ชิ้น',currentStock:5,minStock:2,maxStock:10,location:'Shelf D-2',compatibleMachines:[]},
+  // ── Filters ──
+  {id:'SP012',code:'SP012',name:'Filter Bag 25 Micron',partNumber:'FB-25-200',manufacturer:'Eaton',category:'Filters',unit:'ชิ้น',currentStock:24,minStock:10,maxStock:48,location:'Shelf E-1',compatibleMachines:['M001','M008','M014']},
+  {id:'SP013',code:'SP013',name:'Air Filter Element',partNumber:'AF-G3',manufacturer:'Mann+Hummel',category:'Filters',unit:'ชิ้น',currentStock:6,minStock:3,maxStock:12,location:'Shelf E-2',compatibleMachines:[]},
+  // ── Blades & Cutting ──
+  {id:'SP014',code:'SP014',name:'Curd Cutter Blade ตรง',partNumber:'CCB-300-S',manufacturer:'Stork',category:'Blades',unit:'ชิ้น',currentStock:4,minStock:2,maxStock:8,location:'Shelf F-1',compatibleMachines:['M003']},
+  {id:'SP015',code:'SP015',name:'Curd Cutter Blade เฉียง',partNumber:'CCB-300-D',manufacturer:'Stork',category:'Blades',unit:'ชิ้น',currentStock:4,minStock:2,maxStock:8,location:'Shelf F-1',compatibleMachines:['M003']},
+];
+
+const SPARE_CATEGORIES = ['Bearings','Belts','Blades','Electrical','Filters','Hydraulics','Pneumatics','Gaskets','Fasteners','Others'];
+const SPARE_UNITS = ['ชิ้น','เมตร','ลิตร','กล่อง','ชุด','คู่','แผ่น','ม้วน'];
+
+// ── CONSTANTS ─────────────────────────────────────────────
+const LINE_COLOR_DEFAULT = {'เนยแข็ง':'#F4A261','โยเกิร์ต':'#48CAE4','ครีมชีส':'#74C69D','อื่นๆ':'#CE93D8'};
+const STATUS_COLOR = {Running:'#00C853',Down:'#FF1744',Maintenance:'#FF6D00','Cannot Fix':'#AA00FF',Resolved:'#00C853'};
+const LINES_DEFAULT = ['เนยแข็ง','โยเกิร์ต','ครีมชีส'];
+function getAllLines(){ return [...LINES_DEFAULT, ...customLines]; }
+
+// ── MUTABLE DATA (updated by Firebase listeners) ──────────
+let machines       = [];
+let technicians    = [];
+let records        = [];
+let machineStatus  = {};
+let customLines    = [];
+let customColors   = {};
+let spareParts     = [];
+let spareCategories= [...SPARE_CATEGORIES];
+
+let currentTab='dashboard';
+let detailId=null;
+let editMachId=null;
+let selectedSpares=[];
+let detailTimerInterval=null;
+let appInitialized=false;
+
+// ── FIREBASE SETUP ────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyDmAZhP0T8_Vl3IwnrVG-Uwij-e75FEoDA",
+  authDomain: "bff-tracker-44d6e.firebaseapp.com",
+  databaseURL: "https://bff-tracker-44d6e-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bff-tracker-44d6e",
+  storageBucket: "bff-tracker-44d6e.firebasestorage.app",
+  messagingSenderId: "371596002024",
+  appId: "1:371596002024:web:94be283717da24b94bff5d"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function stripImages(rec){ return {...rec, images:[]}; }
+
+// Connection indicator
+db.ref('.info/connected').on('value', snap => {
+  const dot = document.getElementById('fb-dot');
+  const txt = document.getElementById('fb-status-text');
+  if(snap.val() === true){
+    dot.style.background = '#00C853'; dot.style.boxShadow = '0 0 6px #00C853';
+    txt.textContent = '🟢 เชื่อมต่อ Firebase — Realtime'; txt.style.color = '#00C853';
+  } else {
+    dot.style.background = '#FF1744'; dot.style.boxShadow = '0 0 6px #FF1744';
+    txt.textContent = '🔴 ออฟไลน์ — ข้อมูลอาจไม่ sync'; txt.style.color = '#FF8A80';
+  }
+});
+
+// ── INIT ทันที จาก localStorage ──────────────────────────
+(function initNow(){
+  try {
+    const m=localStorage.getItem('bd_machines_bk'); if(m) machines=JSON.parse(m);
+    const t=localStorage.getItem('bd_techs_bk');    if(t) technicians=JSON.parse(t);
+    const sp=localStorage.getItem('bd_spares_bk');  if(sp) spareParts=JSON.parse(sp);
+    const r=localStorage.getItem('bd_records_bk');  if(r) records=JSON.parse(r);
+    const s=localStorage.getItem('bd_status_bk');   if(s) machineStatus=JSON.parse(s);
+  } catch(e){}
+  if(!machines.length)     machines=[...DEFAULT_MACHINES];
+  if(!technicians.length)  technicians=[...DEFAULT_TECHS];
+  if(!spareParts.length)   spareParts=[...DEFAULT_SPARE_PARTS];
+  machines.forEach(m=>{ if(!machineStatus[m.id]) machineStatus[m.id]='Running'; });
+  appInitialized=true;
+  updateClock();
+  renderDashboard();
+})();
+
+// ── LOCALSAVE ─────────────────────────────────────────────
+function lsSave(){
+  try {
+    localStorage.setItem('bd_machines_bk', JSON.stringify(machines));
+    localStorage.setItem('bd_techs_bk',    JSON.stringify(technicians));
+    localStorage.setItem('bd_spares_bk',   JSON.stringify(spareParts));
+    localStorage.setItem('bd_records_bk',  JSON.stringify(records));
+    localStorage.setItem('bd_status_bk',   JSON.stringify(machineStatus));
+  } catch(e){}
+}
+
+// ── FIREBASE REALTIME SYNC (background) ───────────────────
+function fbUpdate(){
+  lsSave();
+  renderCurrentTab();
+}
+
+db.ref('bd_machines').on('value', snap => {
+  const data = snap.val();
+  if(data){
+    machines = Object.values(data);
+    machines.forEach(m=>{ if(!machineStatus[m.id]) machineStatus[m.id]='Running'; });
+    fbUpdate();
+  } else {
+    const o={}; DEFAULT_MACHINES.forEach(m=>o[m.id]=m);
+    db.ref('bd_machines').set(o).catch(e=>console.warn(e));
+  }
+});
+
+db.ref('bd_status').on('value', snap => {
+  if(snap.val()){ machineStatus=snap.val(); fbUpdate(); }
+});
+
+db.ref('bd_records').on('value', snap => {
+  const data = snap.val();
+  records = data ? Object.values(data).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
+  fbUpdate();
+});
+
+db.ref('bd_techs').on('value', snap => {
+  const data = snap.val();
+  if(data){ technicians = Array.isArray(data)?data:Object.values(data); fbUpdate(); }
+  else { db.ref('bd_techs').set(DEFAULT_TECHS).catch(e=>console.warn(e)); }
+});
+
+db.ref('bd_spares').on('value', snap => {
+  const data = snap.val();
+  if(data){ spareParts = Object.values(data); fbUpdate(); }
+  else { const o={}; DEFAULT_SPARE_PARTS.forEach(s=>o[s.id]=s); db.ref('bd_spares').set(o).catch(e=>console.warn(e)); }
+});
+
+db.ref('bd_lines').on('value', snap => {
+  const data = snap.val();
+  customLines  = data ? (data.names  || []) : [];
+  customColors = data ? (data.colors || {}) : {};
+  renderCurrentTab();
+});
+
+db.ref('bd_spare_cats').on('value', snap => {
+  if(snap.val()) spareCategories = snap.val();
+});
+
+// ── FIREBASE CONNECTION TEST ──────────────────────────────
+// Test write permission immediately on load
+db.ref('bd_writetest').set({t: Date.now()})
+  .then(() => {
+    db.ref('bd_writetest').remove();
+    console.log('✅ Firebase write permission OK');
+  })
+  .catch(e => {
+    console.error('❌ Firebase write DENIED:', e);
+    const txt = document.getElementById('fb-status-text');
+    txt.textContent = '🔴 Firebase: ไม่มีสิทธิ์เขียน — กรุณาเปิด Security Rules';
+    txt.style.color = '#FF8A80';
+    document.getElementById('fb-dot').style.background = '#FF1744';
+    // Show prominent alert
+    setTimeout(() => {
+      alert('⚠️ Firebase Security Rules ปิดอยู่\n\nกรุณาไปที่ Firebase Console → Realtime Database → Rules\nแล้วเปลี่ยนเป็น:\n{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}');
+    }, 2000);
+  });
+
+
+function sanitizeRec(r){
+  // Firebase rejects null — replace with empty string/0
+  return {
+    ...r,
+    endTime: r.endTime || '',
+    duration: r.duration || 0,
+    action: r.action || '',
+    cannotFixReason: r.cannotFixReason || '',
+    notes: r.notes || '',
+    images: [],
+    spareParts: (r.spareParts||[]).map(s=>({
+      id:s.id||'', code:s.code||'', name:s.name||'',
+      partNumber:s.partNumber||'', manufacturer:s.manufacturer||'',
+      quantity:s.quantity||1, unit:s.unit||''
+    }))
+  };
+}
+function persist(){
+  const machObj={}; machines.forEach(m=>{ machObj[m.id]=m; });
+  db.ref('bd_machines').set(machObj).catch(e=>console.warn('FB:machines',e));
+  db.ref('bd_techs').set(technicians).catch(e=>console.warn('FB:techs',e));
+  const recObj={}; records.forEach(r=>{ recObj[r.id]=sanitizeRec(r); });
+  db.ref('bd_records').set(recObj).catch(e=>console.warn('FB:records',e));
+  db.ref('bd_status').set(machineStatus).catch(e=>console.warn('FB:status',e));
+  db.ref('bd_lines').set({names:customLines, colors:customColors}).catch(e=>console.warn('FB:lines',e));
+  const spObj={}; spareParts.forEach(s=>{ spObj[s.id]=s; });
+  db.ref('bd_spares').set(spObj).catch(e=>console.warn('FB:spares',e));
+  db.ref('bd_spare_cats').set(spareCategories).catch(e=>console.warn('FB:cats',e));
+}
+
+// ── HELPERS ───────────────────────────────────────────────
+function fmtTime(iso){
+  if(!iso) return '–';
+  const d=new Date(iso);
+  return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short'})+' '+
+    d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+}
+function fmtDur(m){ if(!m&&m!==0)return '–'; const h=Math.floor(m/60),r=m%60; return h>0?`${h}ชม.${r}น.`:`${r}น.`; }
+function elapsedMin(iso){ return Math.floor((Date.now()-new Date(iso))/60000); }
+function genId(){ return 'BD'+Date.now().toString().slice(-6); }
+function genMachId(){ 
+  const nums=machines.map(m=>parseInt(m.id.replace(/\D/g,''))||0);
+  const next=Math.max(0,...nums)+1;
+  return 'M'+String(next).padStart(3,'0');
+}
+function genSpareId(){ 
+  const nums=spareParts.map(s=>parseInt(s.id.replace(/\D/g,''))||0);
+  const next=Math.max(0,...nums)+1;
+  return 'SP'+String(next).padStart(3,'0');
+}
+function activeRecords(){ return records.filter(r=>r.status==='Down'||r.status==='Maintenance'||r.status==='Cannot Fix'); }
+function pill(text,color){ return `<span class="pill" style="color:${color};background:${color}22;border:1px solid ${color}44">${text}</span>`; }
+function lineColor(l){ 
+  const color = {...LINE_COLOR_DEFAULT, ...customColors}[l];
+  return color || '#aaa'; 
+}
+
+function showToast(msg,ok=true){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.background=ok?'#00C853':'#FF1744'; t.style.color=ok?'#001A12':'#fff';
+  t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),3000);
+}
+
+// ── CLOCK & ALERT ─────────────────────────────────────────
+function updateClock(){
+  const now=new Date();
+  document.getElementById('hdr-date').textContent=now.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('hdr-time').textContent=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  const active=activeRecords();
+  const bar=document.getElementById('alert-bar');
+  if(active.length>0){
+    bar.classList.remove('hidden');
+    document.getElementById('alert-text').innerHTML=`ผิดปกติ <strong>${active.length}</strong> รายการ กำลังดำเนินการ`;
+  } else bar.classList.add('hidden');
+}
+setInterval(()=>{ updateClock(); renderCurrentTab(); },30000);
+updateClock();
+
+// ── FAB ───────────────────────────────────────────────────
+function fabClick(){
+  if(currentTab==='settings') openMachForm(null);
+  else if(currentTab==='spares') openSpareForm(null);
+  else openForm();
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(tab){
+  ['dashboard','machines','spares','reports','history','settings'].forEach(t=>{
+    document.getElementById('page-'+t).classList.toggle('hidden',t!==tab);
+    document.getElementById('nav-'+t).classList.toggle('active',t===tab);
+  });
+  const fab=document.getElementById('fab-btn');
+  if(tab==='settings'){
+    fab.textContent='＋'; fab.className='fab settings-tab';
+    fab.title='เพิ่มเครื่องจักร';
+  } else if(tab==='spares'){
+    fab.textContent='＋'; fab.className='fab settings-tab';
+    fab.title='เพิ่มอะไหล่';
+  } else {
+    fab.textContent='+'; fab.className='fab'; fab.title='รายงาน Breakdown';
+  }
+  if(tab==='history' || tab==='reports') fab.classList.add('hidden'); else fab.classList.remove('hidden');
+  currentTab=tab; renderCurrentTab();
+}
+
+function renderCurrentTab(){
+  if(currentTab==='dashboard') renderDashboard();
+  else if(currentTab==='machines') renderMachines();
+  else if(currentTab==='spares') renderSpares();
+  else if(currentTab==='reports') renderReports();
+  else if(currentTab==='history') renderHistory();
+  else if(currentTab==='settings') renderSettings();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+function renderDashboard(){
+  const today=new Date().toDateString();
+  const todayRecs=records.filter(r=>new Date(r.startTime).toDateString()===today);
+  const resolved=records.filter(r=>r.status==='Resolved'&&r.duration);
+  const avgDown=resolved.length?Math.round(resolved.reduce((s,r)=>s+r.duration,0)/resolved.length):0;
+  const active=activeRecords();
+  const lines=getAllLines().map(line=>{
+    const ms=machines.filter(m=>m.line===line);
+    const down=ms.filter(m=>machineStatus[m.id]&&machineStatus[m.id]!=='Running').length;
+    return {line,total:ms.length,down,ok:ms.length-down};
+  });
+  let html=`<div class="kpi-grid">
+    <div class="kpi"><div class="kpi-val" style="color:#F4A261">${todayRecs.length}</div><div class="kpi-unit">ครั้ง</div><div class="kpi-label">Breakdown วันนี้</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#FF1744">${active.filter(r=>r.status==='Down').length}</div><div class="kpi-unit">เครื่อง</div><div class="kpi-label">กำลัง Down</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#48CAE4">${avgDown}</div><div class="kpi-unit">นาที</div><div class="kpi-label">Avg Downtime</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#FF6D00">${active.filter(r=>r.status==='Maintenance').length}</div><div class="kpi-unit">เครื่อง</div><div class="kpi-label">Maintenance</div></div>
+  </div>
+  <div class="section-label">สถานะไลน์การผลิต</div>`;
+  lines.forEach(({line,total,down,ok})=>{
+    const pct=total > 0 ? Math.round((ok/total)*100) : 100;
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${lineColor(line)}"></div>
+          <span style="font-weight:600">ไลน์${line}</span>
+          <span style="font-size:11px;color:#5A7A9A">${total} เครื่อง</span>
+        </div>
+        <span style="font-weight:700;color:${down>0?'#FF1744':(total>0?'#00C853':'#5A7A9A')};font-size:13px">${total===0?'ยังไม่มีเครื่อง':down>0?down+' Down':'ปกติ'}</span>
+      </div>
+      ${total > 0 ? `
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div class="progress-text">${ok}/${total} Running</div>
+      ` : `<div style="font-size:11px;color:#5A7A9A;text-align:center;padding:8px 0">เพิ่มเครื่องจักรในไลน์นี้ที่หน้าตั้งค่า</div>`}
+    </div>`;
+  });
+  if(active.length>0){
+    html+=`<div class="section-label" style="margin-top:4px">ปัญหาที่กำลังดำเนินการ</div>`;
+    active.forEach(r=>{
+      const elapsed=elapsedMin(r.startTime);
+      const sc=STATUS_COLOR[r.status];
+      html+=`<div class="card card-click" style="border-left:3px solid ${sc}" onclick="openDetail('${r.id}')">
+        <div style="display:flex;justify-content:space-between">
+          <div style="flex:1">
+            <div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+              ${pill(r.status,sc)}<span style="font-size:10px;color:${lineColor(r.line)}">ไลน์${r.line}</span>
+            </div>
+            <div style="font-weight:700;font-size:15px">${r.machineName}</div>
+            <div style="font-size:12px;color:#5A7A9A;margin-top:3px">${r.detail}</div>
+            <div style="font-size:11px;color:#5A7A9A;margin-top:3px">👤 ${r.reporter?r.reporter+' → ':''} 🔧 ${r.technician}</div>
+          </div>
+          <div style="text-align:right;padding-left:10px">
+            <div style="font-size:26px;font-weight:800;color:${elapsed>60?'#FF1744':'#F4A261'};line-height:1">${elapsed}</div>
+            <div style="font-size:9px;color:#5A7A9A">นาที</div>
+          </div>
+        </div>
+      </div>`;
+    });
+  } else {
+    html+=`<div class="empty"><div class="empty-icon">✅</div><div>ไม่มีเครื่องจักร Down ขณะนี้</div></div>`;
+  }
+  document.getElementById('page-dashboard').innerHTML=html;
+}
+
+// ── MACHINES ──────────────────────────────────────────────
+function renderMachines(){
+  let html=`<div style="font-size:11px;color:#5A7A9A;margin-bottom:12px">เครื่องจักรทั้งหมด ${machines.length} เครื่อง</div>`;
+  if(machines.length===0){ html+=`<div class="empty"><div class="empty-icon">⚙️</div><div>ยังไม่มีเครื่องจักร<br>ไปที่ 🛠️ ตั้งค่า เพื่อเพิ่ม</div></div>`; }
+  machines.forEach(m=>{
+    const s=machineStatus[m.id]||'Running';
+    const sc=STATUS_COLOR[s]||'#aaa';
+    const active=records.find(r=>r.machineId===m.id&&r.status!=='Resolved');
+    const elapsed=active?elapsedMin(active.startTime):null;
+    html+=`<div class="card ${active?'card-click':''}" style="border-left:3px solid ${sc}" ${active?`onclick="openDetail('${active.id}')"`:''}>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:14px">${m.name}</div>
+          <div style="font-size:11px;color:#5A7A9A">${m.id}${m.area?' · '+m.area:''} · <span style="color:${lineColor(m.line)}">ไลน์${m.line}</span></div>
+          ${elapsed!==null?`<div style="font-size:11px;color:#FF1744;margin-top:3px">⏱ ${elapsed} นาที</div>`:''}
+        </div>
+        <div>
+          <div class="status-dot" style="background:${sc};box-shadow:0 0 8px ${sc}"></div>
+          <div class="status-label" style="color:${sc}">${s}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('page-machines').innerHTML=html;
+}
+
+// ── HISTORY ───────────────────────────────────────────────
+function renderHistory(){
+  let html=`<div style="font-size:11px;color:#5A7A9A;margin-bottom:12px">ประวัติทั้งหมด ${records.length} รายการ</div>`;
+  if(records.length===0){ html+=`<div class="empty"><div class="empty-icon">📋</div><div>ยังไม่มีประวัติ Breakdown</div></div>`; }
+  records.forEach(r=>{
+    const sc=STATUS_COLOR[r.status];
+    html+=`<div class="card card-click" onclick="openDetail('${r.id}')">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <div style="flex:1">
+          <div style="display:flex;gap:6px;margin-bottom:5px;flex-wrap:wrap">
+            ${pill(r.status,sc)}
+            ${r.cannotFix?pill('🚫 ซ่อมไม่ได้','#AA00FF'):''}
+          </div>
+          <div style="font-weight:700">${r.machineName}</div>
+          <div style="font-size:11px;color:#5A7A9A">${r.cause}</div>
+          <div style="font-size:12px;color:#DDE8F4;margin-top:3px">${r.detail}</div>
+          <div style="font-size:11px;color:#5A7A9A;margin-top:3px">👤 ${r.reporter?r.reporter+' → ':''} 🔧 ${r.technician} · ${r.id}</div>
+        </div>
+        <div style="min-width:50px;text-align:right">
+          <div style="font-size:11px;color:#5A7A9A">${fmtTime(r.startTime)}</div>
+          ${r.duration?`<div style="font-size:12px;font-weight:700;color:#F4A261;margin-top:4px">${fmtDur(r.duration)}</div>`:''}
+        </div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('page-history').innerHTML=html;
+}
+
+// ── SETTINGS ──────────────────────────────────────────────
+function renderSettings(){
+  let html=`
+  <div class="section-label">เครื่องจักร (${machines.length} เครื่อง)</div>
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="add-mach-btn" style="margin-bottom:0;flex:1" onclick="openMachForm(null)">＋ เพิ่มทีละเครื่อง</button>
+    <button class="add-mach-btn" style="margin-bottom:0;flex:1;color:#74C69D;border-color:#74C69D44" onclick="openImport()">📥 Import Excel</button>
+  </div>`;
+
+  if(machines.length===0){
+    html += '<div style="background:#F4A26122;border:1px solid #F4A26144;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">'
+          + '<div style="font-size:13px;color:#F4A261;margin-bottom:10px">⚠️ ยังไม่มีข้อมูลเครื่องจักร</div>'
+          + '<button onclick="loadDefaultData()" style="background:#F4A261;border:none;border-radius:8px;color:#0D1B2A;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">🏭 โหลดข้อมูลตัวอย่าง BFF</button>'
+          + '</div>';
+  } else {
+    html += '<button onclick="loadDefaultData()" style="width:100%;padding:10px;background:#1E3A5F;border:1px solid #2A4F7A;border-radius:10px;color:#5A7A9A;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:10px">🔄 โหลดข้อมูลตัวอย่าง BFF</button>';
+  }
+
+  html += '</div>';
+  html = html.replace('</div>',''); // remove the extra closing div we added
+
+  getAllLines().forEach(line=>{
+    const ms=machines.filter(m=>m.line===line);
+    if(ms.length===0) return;
+    html+=`<div style="font-size:11px;color:${lineColor(line)};font-weight:700;margin:12px 0 6px;letter-spacing:.5px">ไลน์${line}</div>`;
+    ms.forEach(m=>{
+      html+=`<div class="card" style="border-left:3px solid ${lineColor(m.line)}">
+        <div class="mach-manage-row">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px">${m.name}</div>
+            <div style="font-size:11px;color:#5A7A9A">${m.id}${m.area?' · '+m.area:''}</div>
+          </div>
+          <div class="mach-actions">
+            <button class="icon-btn" onclick="openMachForm('${m.id}')" title="แก้ไข">✏️</button>
+            <button class="icon-btn danger" onclick="confirmDeleteMach('${m.id}')" title="ลบ">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+
+  // machines without standard lines
+  const others=machines.filter(m=>!getAllLines().includes(m.line));
+  if(others.length>0){
+    html+=`<div style="font-size:11px;color:#CE93D8;font-weight:700;margin:12px 0 6px">อื่นๆ</div>`;
+    others.forEach(m=>{
+      html+=`<div class="card" style="border-left:3px solid #CE93D8">
+        <div class="mach-manage-row">
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:14px">${m.name}</div>
+            <div style="font-size:11px;color:#5A7A9A">${m.id} · ไลน์${m.line}${m.area?' · '+m.area:''}</div>
+          </div>
+          <div class="mach-actions">
+            <button class="icon-btn" onclick="openMachForm('${m.id}')">✏️</button>
+            <button class="icon-btn danger" onclick="confirmDeleteMach('${m.id}')">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  html+=`
+  <div class="section-label" style="margin-top:20px">ไลน์การผลิต (${getAllLines().length} ไลน์)</div>
+  <button class="add-mach-btn" onclick="openLineForm()">＋ จัดการไลน์การผลิต</button>`;
+  getAllLines().forEach(line=>{
+    const ms=machines.filter(m=>m.line===line);
+    html+=`<div class="card" style="border-left:3px solid ${lineColor(line)}">
+      <div class="mach-manage-row">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">ไลน์${line}</div>
+          <div style="font-size:11px;color:#5A7A9A">${ms.length} เครื่องจักร</div>
+        </div>
+        <div class="mach-actions">
+          <button class="icon-btn" onclick="editLine('${line}')" title="แก้ไขชื่อ">✏️</button>
+          <button class="icon-btn danger" onclick="confirmDeleteLine('${line}')" title="ลบ">🗑️</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html+=`
+  <div class="section-label" style="margin-top:20px">ช่างซ่อม (${technicians.length} คน)</div>
+  <button class="add-mach-btn" onclick="openTechForm()">＋ จัดการช่างซ่อม</button>`;
+
+  document.getElementById('page-settings').innerHTML=html;
+}
+
+// ── MACHINE FORM ──────────────────────────────────────────
+function openMachForm(id){
+  editMachId=id;
+  document.getElementById('mach-form-title').textContent=id?'แก้ไขเครื่องจักร':'เพิ่มเครื่องจักร';
+  
+  // populate line dropdown
+  const lineSel = document.getElementById('mf-line');
+  const allLines = [...LINES_DEFAULT, ...customLines];
+  lineSel.innerHTML = '<option value="">-- เลือกไลน์ --</option>';
+  allLines.forEach(line => {
+    const opt = document.createElement('option');
+    opt.value = line;
+    opt.textContent = 'ไลน์' + line;
+    lineSel.appendChild(opt);
+  });
+  
+  if(id){
+    const m=machines.find(x=>x.id===id);
+    document.getElementById('mf-id').value=m.id;
+    document.getElementById('mf-id').disabled=true;
+    document.getElementById('mf-name').value=m.name;
+    document.getElementById('mf-line').value=m.line;
+    document.getElementById('mf-area').value=m.area||'';
+  } else {
+    document.getElementById('mf-id').value=genMachId();
+    document.getElementById('mf-id').disabled=false;
+    document.getElementById('mf-name').value='';
+    document.getElementById('mf-line').value='';
+    document.getElementById('mf-area').value='';
+  }
+  document.getElementById('mach-overlay').classList.remove('hidden');
+}
+
+function closeMachForm(){
+  document.getElementById('mach-overlay').classList.add('hidden');
+  editMachId=null;
+}
+
+function saveMachine(){
+  const id=document.getElementById('mf-id').value.trim().toUpperCase();
+  const name=document.getElementById('mf-name').value.trim();
+  const line=document.getElementById('mf-line').value;
+  const area=document.getElementById('mf-area').value.trim();
+  if(!id||!name||!line){ showToast('⚠️ กรุณากรอกข้อมูลให้ครบ',false); return; }
+  if(!editMachId && machines.find(m=>m.id===id)){ showToast('⚠️ รหัสเครื่องนี้มีอยู่แล้ว',false); return; }
+  if(editMachId){
+    machines=machines.map(m=>m.id===editMachId?{...m,name,line,area}:m);
+    db.ref('bd_machines/'+editMachId).update({name,line,area}).catch(e=>console.warn(e));
+    showToast('✅ แก้ไขเครื่องจักรแล้ว');
+  } else {
+    machines.push({id,name,line,area});
+    machineStatus[id]='Running';
+    db.ref('bd_machines/'+id).set({id,name,line,area}).catch(e=>console.warn(e));
+    db.ref('bd_status/'+id).set('Running').catch(e=>console.warn(e));
+    showToast('✅ เพิ่มเครื่องจักร "'+name+'" แล้ว');
+  }
+  closeMachForm();
+  renderSettings();
+}
+
+// ── DELETE MACHINE ────────────────────────────────────────
+function confirmDeleteMach(id){
+  const m=machines.find(x=>x.id===id);
+  const hasActive=records.some(r=>r.machineId===id&&r.status!=='Resolved');
+  if(hasActive){ showToast('⚠️ ไม่สามารถลบได้ มี Breakdown ที่ยังค้างอยู่',false); return; }
+  showConfirm(
+    'ลบเครื่องจักร',
+    `ต้องการลบ "${m.name}" (${m.id}) ใช่หรือไม่?`,
+    ()=>{ 
+      machines=machines.filter(x=>x.id!==id); 
+      delete machineStatus[id]; 
+      db.ref('bd_machines/'+id).remove().catch(e=>console.warn(e));
+      db.ref('bd_status/'+id).remove().catch(e=>console.warn(e));
+      persist(); renderSettings(); showToast('ลบเครื่องจักรแล้ว'); 
+    }
+  );
+}
+
+// ── TECHNICIAN FORM ───────────────────────────────────────
+function openTechForm(){
+  document.getElementById('tf-name').value='';
+  renderTechList();
+  document.getElementById('tech-overlay').classList.remove('hidden');
+}
+function closeTechForm(){ document.getElementById('tech-overlay').classList.add('hidden'); }
+
+function renderTechList(){
+  const el=document.getElementById('tech-list');
+  if(!el) return;
+  el.innerHTML=technicians.map((t,i)=>`
+    <div class="tech-item">
+      <span style="font-size:14px">👤 ${t}</span>
+      <button class="icon-btn danger" onclick="deleteTech(${i})">🗑️</button>
+    </div>`).join('');
+}
+
+function addTechnician(){
+  const name=document.getElementById('tf-name').value.trim();
+  if(!name){ showToast('⚠️ กรุณากรอกชื่อช่าง',false); return; }
+  if(technicians.includes(name)){ showToast('⚠️ ชื่อนี้มีอยู่แล้ว',false); return; }
+  technicians.push(name);
+  document.getElementById('tf-name').value='';
+  showToast('✅ เพิ่มช่าง "'+name+'" แล้ว');
+  db.ref('bd_techs').set(technicians).catch(e=>console.warn(e));
+  renderTechList(); renderSettings();
+}
+
+function deleteTech(i){
+  showConfirm('ลบช่างซ่อม',`ต้องการลบ "${technicians[i]}" ใช่หรือไม่?`,()=>{
+    const name=technicians[i];
+    technicians.splice(i,1);
+    showToast('🗑️ ลบช่าง "'+name+'" แล้ว');
+    db.ref('bd_techs').set(technicians).catch(e=>console.warn(e));
+    renderTechList(); renderSettings();
+  });
+}
+
+// ── CONFIRM DIALOG ────────────────────────────────────────
+let confirmCallback=null;
+function showConfirm(title,msg,cb){
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-msg').textContent=msg;
+  confirmCallback=cb;
+  document.getElementById('confirm-dialog').classList.add('show');
+}
+function closeConfirm(){ document.getElementById('confirm-dialog').classList.remove('show'); confirmCallback=null; }
+function doConfirm(){ if(confirmCallback) confirmCallback(); closeConfirm(); }
+
+// ── DETAIL ────────────────────────────────────────────────
+function openDetail(id){ 
+  detailId=id; 
+  renderDetail(); 
+  document.getElementById('detail-overlay').classList.remove('hidden'); 
+  // Start live timer (update every minute)
+  if(detailTimerInterval) clearInterval(detailTimerInterval);
+  detailTimerInterval = setInterval(() => {
+    const r = records.find(x => x.id === detailId);
+    if(r && r.status !== 'Resolved') updateDetailTimer();
+  }, 60000); // update every 60 seconds
+}
+
+function closeDetail(){ 
+  document.getElementById('detail-overlay').classList.add('hidden'); 
+  detailId=null; 
+  // Stop live timer
+  if(detailTimerInterval) clearInterval(detailTimerInterval);
+  detailTimerInterval = null;
+  renderCurrentTab(); 
+}
+
+function updateDetailTimer(){
+  const r = records.find(x => x.id === detailId);
+  if(!r || r.status === 'Resolved') return;
+  const elapsed = elapsedMin(r.startTime);
+  const timerColor = elapsed > 60 ? '#FF1744' : '#F4A261';
+  const timerEl = document.querySelector('.timer-val');
+  if(timerEl){
+    timerEl.style.color = timerColor;
+    timerEl.textContent = fmtDur(elapsed);
+  }
+}
+
+function renderDetail(){
+  const r=records.find(x=>x.id===detailId); if(!r) return;
+  const sc=STATUS_COLOR[r.status];
+  const isActive=r.status!=='Resolved';
+  const elapsed=elapsedMin(r.startTime);
+  const timerVal=isActive?elapsed:r.duration;
+  const timerColor=isActive?(elapsed>60?'#FF1744':'#F4A261'):'#00C853';
+  const rows=[
+    {label:'ประเภทความเสียหาย',val:r.cause},
+    {label:'รายละเอียดปัญหา',val:r.detail},
+    {label:'👤 ผู้แจ้งซ่อม',val:r.reporter||'–'},
+    {label:'🔧 ช่างซ่อม',val:r.technician},
+    {label:'การดำเนินการ',val:r.action||'–'},
+    ...(r.notes?[{label:'หมายเหตุ',val:r.notes}]:[]),
+    ...(r.cannotFix?[{label:'🚫 เหตุผลที่ซ่อมไม่ได้',val:r.cannotFixReason||'–'}]:[]),
+  ];
+  let sparesHtml='';
+  if(r.spareParts && r.spareParts.length > 0){
+    sparesHtml = `<div style="font-size:11px;color:#5A7A9A;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📦 อะไหล่ที่ใช้ (${r.spareParts.length} รายการ)</div>
+    <div style="background:#13243A;border:1px solid #1E3A5F;border-radius:10px;padding:12px;margin-bottom:14px">`;
+    r.spareParts.forEach((s, idx) => {
+      sparesHtml += `<div style="padding:8px 0;border-bottom:${idx<r.spareParts.length-1?'1px solid #1E3A5F22':'none'}">
+        <div style="font-weight:700;font-size:13px">${s.name}</div>
+        <div style="font-size:11px;color:#5A7A9A">${s.code}${s.partNumber?' · P/N: '+s.partNumber:''}</div>
+        ${s.manufacturer?`<div style="font-size:11px;color:#74C69D">🏭 ${s.manufacturer}</div>`:''}
+        <div style="font-size:12px;color:#48CAE4;margin-top:4px">จำนวน: <strong>${s.quantity}</strong> ${s.unit}</div>
+      </div>`;
+    });
+    sparesHtml += '</div>';
+  }
+  
+  let actionHtml='';
+  if(isActive&&!r.cannotFix) actionHtml=`<button class="resolve-btn" id="resolve-btn" onclick="resolveRecord('${r.id}')">✓ ซ่อมเสร็จ — ปิดงาน</button>`;
+  else if(r.cannotFix&&isActive) actionHtml=`<div style="background:#AA00FF22;border:1px solid #AA00FF66;border-radius:12px;padding:14px;text-align:center;color:#CE93D8;font-size:13px;font-weight:600">🚫 รอการอนุมัติจากผู้จัดการ</div>`;
+  document.getElementById('detail-body').innerHTML=`
+    <div class="card" style="border-left:3px solid ${sc}">
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        ${pill(r.status,sc)}${r.cannotFix?pill('🚫 ซ่อมไม่ได้','#AA00FF'):''}
+      </div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:2px">${r.machineName}</div>
+      <div style="font-size:12px;color:#5A7A9A">${r.machineId} · ไลน์${r.line} · ${r.id}</div>
+      <div class="detail-timer">
+        <div class="timer-label">${isActive?'⏱ Downtime ปัจจุบัน':'⏱ Downtime รวม'}</div>
+        <div class="timer-val" style="color:${timerColor}">${fmtDur(timerVal)}</div>
+        <div class="timer-sub">เริ่ม: ${fmtTime(r.startTime)}${r.endTime?' · เสร็จ: '+fmtTime(r.endTime):''}</div>
+      </div>
+    </div>
+    ${rows.map(row=>`<div class="card"><div class="info-label">${row.label}</div><div class="info-val">${row.val}</div></div>`).join('')}
+    ${sparesHtml}${actionHtml}`;
+}
+
+function resolveRecord(id){
+  // Instant UI feedback
+  const btn = document.getElementById('resolve-btn');
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = '⏳ กำลังบันทึก...';
+    btn.style.opacity = '0.6';
+  }
+  
+  records=records.map(r=>{
+    if(r.id!==id) return r;
+    const mins=elapsedMin(r.startTime);
+    machineStatus[r.machineId]='Running';
+    return {...r,status:'Resolved',endTime:new Date().toISOString(),duration:mins};
+  });
+  lsSave();
+  closeDetail();
+  showToast('✅ ซ่อมเสร็จ — ปิดงานแล้ว');
+
+  const resolved=records.find(r=>r.id===id);
+  if(resolved){
+    db.ref('bd_records/'+id).set(resolved).catch(e=>console.warn(e));
+    db.ref('bd_status/'+resolved.machineId).set('Running').catch(e=>console.warn(e));
+  }
+  setTimeout(()=>persist(),0);
+}
+
+// ── BREAKDOWN FORM ────────────────────────────────────────
+function openForm(){
+  if(machines.length===0){ showToast('⚠️ กรุณาเพิ่มเครื่องจักรก่อน ไปที่ 🛠️ ตั้งค่า',false); return; }
+  const mSel=document.getElementById('f-machine');
+  mSel.innerHTML='<option value="">-- เลือกเครื่องจักร --</option>';
+  machines.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=`${m.id} – ${m.name} (ไลน์${m.line})`; mSel.appendChild(o); });
+  
+  // Add onchange event to show quick select spares
+  mSel.onchange = function(){ renderQuickSelectSpares(this.value); };
+  
+  const tSel=document.getElementById('f-tech');
+  tSel.innerHTML='<option value="">-- เลือกช่าง --</option>';
+  technicians.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; tSel.appendChild(o); });
+  const now=new Date();
+  document.getElementById('form-datetime').textContent=now.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long'})+' — '+now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.';
+  
+  selectedSpares=[];
+  document.getElementById('quick-select-spares').innerHTML='';
+  document.getElementById('selected-spares-list').innerHTML='';
+  document.getElementById('form-sheet').classList.remove('hidden');
+}
+
+function closeForm(){
+  document.getElementById('form-sheet').classList.add('hidden');
+  ['f-machine','f-cause','f-detail','f-reporter','f-tech','f-action','f-notes','f-cannot-reason'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f-severity').value='Medium';
+  document.getElementById('f-cannot').checked=false; toggleCannot();
+  selectedSpares=[];
+  document.getElementById('quick-select-spares').innerHTML='';
+  document.getElementById('selected-spares-list').innerHTML='';
+}
+
+// Swipe down to close (iOS style)
+let formStartY = 0;
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initSwipeGesture);
+} else {
+  initSwipeGesture();
+}
+function initSwipeGesture(){
+  const formCard = document.querySelector('#form-sheet .bottom-card');
+  if(formCard){
+    formCard.addEventListener('touchstart', (e) => { formStartY = e.touches[0].clientY; }, {passive: true});
+    formCard.addEventListener('touchmove', (e) => {
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - formStartY;
+      if(diff > 100 && formCard.scrollTop === 0){ closeForm(); }
+    }, {passive: true});
+  }
+}
+
+function toggleCannot(){
+  const checked=document.getElementById('f-cannot').checked;
+  document.getElementById('cannot-box').className='cannot-fix-box'+(checked?'':' off');
+  document.getElementById('f-cannot-reason').classList.toggle('hidden',!checked);
+  document.getElementById('cannot-title').style.color=checked?'#CE93D8':'#DDE8F4';
+}
+
+// ── SPARE PARTS IN BREAKDOWN FORM ────────────────────────
+function renderQuickSelectSpares(machineId){
+  if(!machineId){ 
+    document.getElementById('quick-select-spares').innerHTML=''; 
+    return; 
+  }
+  
+  // Get spares compatible with this machine
+  const compatibleSpares = spareParts.filter(s => 
+    !s.compatibleMachines || s.compatibleMachines.length === 0 || 
+    s.compatibleMachines.includes(machineId)
+  ).slice(0,5); // Show top 5
+  
+  if(compatibleSpares.length === 0){
+    document.getElementById('quick-select-spares').innerHTML='';
+    return;
+  }
+  
+  let html = '<div style="font-size:11px;color:#5A7A9A;margin-bottom:6px">💡 อะไหล่ที่เคยใช้กับเครื่องนี้:</div>';
+  html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+  compatibleSpares.forEach(s => {
+    const alreadySelected = selectedSpares.some(sel => sel.id === s.id);
+    html += `<button type="button" onclick="quickAddSpare('${s.id}')" ${alreadySelected ? 'disabled' : ''}
+      style="padding:6px 12px;border-radius:16px;font-size:12px;border:1px solid ${alreadySelected?'#1E3A5F':'#74C69D'};background:${alreadySelected?'#13243A':'#74C69D18'};color:${alreadySelected?'#5A7A9A':'#74C69D'};cursor:${alreadySelected?'not-allowed':'pointer'};font-family:inherit">
+      ${alreadySelected?'✓ ':''}${s.name}
+    </button>`;
+  });
+  html += '</div>';
+  document.getElementById('quick-select-spares').innerHTML = html;
+}
+
+function quickAddSpare(spareId){
+  const spare = spareParts.find(s => s.id === spareId);
+  if(!spare) return;
+  if(selectedSpares.some(s => s.id === spareId)) return; // already added
+  
+  selectedSpares.push({
+    id: spare.id,
+    code: spare.code,
+    name: spare.name,
+    partNumber: spare.partNumber || '',
+    manufacturer: spare.manufacturer || '',
+    unit: spare.unit,
+    quantity: 1,
+    currentStock: spare.currentStock
+  });
+  
+  renderSelectedSpares();
+  const machineId = document.getElementById('f-machine').value;
+  if(machineId) renderQuickSelectSpares(machineId);
+}
+
+function openSpareSelector(){
+  document.getElementById('spare-search').value = '';
+  renderSpareSelectorList();
+  document.getElementById('spare-selector-overlay').classList.remove('hidden');
+}
+
+function closeSpareSelector(){
+  document.getElementById('spare-selector-overlay').classList.add('hidden');
+}
+
+function renderSpareSelectorList(){
+  const searchQ = document.getElementById('spare-search').value.toLowerCase();
+  const filtered = spareParts.filter(s => 
+    s.name.toLowerCase().includes(searchQ) || 
+    s.code.toLowerCase().includes(searchQ) ||
+    (s.partNumber && s.partNumber.toLowerCase().includes(searchQ))
+  );
+  
+  let html = '';
+  if(filtered.length === 0){
+    html = '<div class="empty"><div class="empty-icon">📦</div><div>ไม่พบอะไหล่</div></div>';
+  } else {
+    filtered.forEach(s => {
+      const alreadySelected = selectedSpares.some(sel => sel.id === s.id);
+      const isLow = s.currentStock < s.minStock;
+      
+      html += `<div class="card" style="border-left:3px solid ${isLow?'#FF1744':'#74C69D'};opacity:${alreadySelected?'0.5':'1'}" onclick="${alreadySelected?'':'selectSpareFromList(\''+s.id+'\')'}" style="cursor:${alreadySelected?'not-allowed':'pointer'}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:14px">${s.name} ${alreadySelected?'<span style="color:#74C69D">✓</span>':''}</div>
+            <div style="font-size:11px;color:#5A7A9A">${s.code}${s.partNumber?' · P/N: '+s.partNumber:''}</div>
+            ${s.manufacturer?`<div style="font-size:11px;color:#74C69D">🏭 ${s.manufacturer}</div>`:''}
+            <div style="font-size:12px;color:${isLow?'#FF1744':'#DDE8F4'};margin-top:4px">
+              Stock: <strong>${s.currentStock}</strong> ${s.unit} ${isLow?'⚠️':''}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  
+  document.getElementById('spare-selector-list').innerHTML = html;
+}
+
+function selectSpareFromList(spareId){
+  quickAddSpare(spareId);
+  closeSpareSelector();
+}
+
+function renderSelectedSpares(){
+  const el = document.getElementById('selected-spares-list');
+  if(selectedSpares.length === 0){
+    el.innerHTML = '';
+    return;
+  }
+  
+  let html = '<div style="background:#13243A;border:1px solid #1E3A5F;border-radius:10px;padding:12px;margin-bottom:14px">';
+  selectedSpares.forEach((s, idx) => {
+    const lowStock = s.currentStock < s.quantity;
+    html += `<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:${idx<selectedSpares.length-1?'1px solid #1E3A5F22':'none'}">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px">${s.name}</div>
+        <div style="font-size:11px;color:#5A7A9A">${s.code}${s.partNumber?' · '+s.partNumber:''}</div>
+        ${lowStock?'<div style="font-size:11px;color:#FF1744">⚠️ Stock ไม่พอ (มี '+s.currentStock+' '+s.unit+')</div>':''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button type="button" onclick="adjustSpareQty(${idx},-1)" style="width:28px;height:28px;border-radius:6px;background:#0D1B2A;border:1px solid #1E3A5F;color:#DDE8F4;cursor:pointer;font-size:16px;font-weight:700;font-family:inherit">−</button>
+        <input type="number" value="${s.quantity}" min="1" onchange="setSpareQty(${idx},this.value)"
+          style="width:50px;padding:6px;text-align:center;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:6px;color:#DDE8F4;font-size:14px;font-family:inherit">
+        <button type="button" onclick="adjustSpareQty(${idx},1)" style="width:28px;height:28px;border-radius:6px;background:#0D1B2A;border:1px solid #1E3A5F;color:#DDE8F4;cursor:pointer;font-size:16px;font-weight:700;font-family:inherit">+</button>
+        <span style="font-size:12px;color:#5A7A9A;min-width:35px">${s.unit}</span>
+      </div>
+      <button type="button" onclick="removeSelectedSpare(${idx})" style="width:28px;height:28px;border-radius:6px;background:#FF174418;border:1px solid #FF1744;color:#FF1744;cursor:pointer;font-size:14px;font-family:inherit">🗑️</button>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function adjustSpareQty(idx, delta){
+  selectedSpares[idx].quantity = Math.max(1, selectedSpares[idx].quantity + delta);
+  renderSelectedSpares();
+}
+
+function setSpareQty(idx, val){
+  const qty = parseInt(val) || 1;
+  selectedSpares[idx].quantity = Math.max(1, qty);
+  renderSelectedSpares();
+}
+
+function removeSelectedSpare(idx){
+  selectedSpares.splice(idx, 1);
+  renderSelectedSpares();
+  const machineId = document.getElementById('f-machine').value;
+  if(machineId) renderQuickSelectSpares(machineId);
+}
+
+function submitForm(){
+  const machineId=document.getElementById('f-machine').value;
+  const cause=document.getElementById('f-cause').value;
+  const detail=document.getElementById('f-detail').value.trim();
+  const reporter=document.getElementById('f-reporter').value.trim();
+  const tech=document.getElementById('f-tech').value;
+  if(!machineId||!cause||!detail||!reporter||!tech){ showToast('⚠️ กรุณากรอกข้อมูลที่จำเป็นให้ครบ (รวมผู้แจ้งซ่อม)',false); return; }
+  const m=machines.find(x=>x.id===machineId);
+  if(!m){ showToast('⚠️ ไม่พบข้อมูลเครื่องจักร',false); return; }
+  const cannotFix=document.getElementById('f-cannot').checked;
+  const newStatus=cannotFix?'Cannot Fix':'Down';
+
+  const lowStockSpares=selectedSpares.filter(s=>s.currentStock<s.quantity);
+  if(lowStockSpares.length>0){
+    const ok=window.confirm('⚠️ อะไหล่มี Stock ไม่พอ:\n'+lowStockSpares.map(s=>s.name).join(', ')+'\n\nบันทึกต่อไปไหม?');
+    if(!ok) return;
+  }
+
+  const recId=genId();
+  const rec={
+    id:recId, machineId, machineName:m.name, line:m.line,
+    startTime:new Date().toISOString(), endTime:'', duration:0,
+    severity:document.getElementById('f-severity').value||'Medium',
+    cause, detail, reporter, technician:tech,
+    action:document.getElementById('f-action').value.trim()||'',
+    cannotFix, cannotFixReason:document.getElementById('f-cannot-reason').value.trim()||'',
+    status:newStatus, notes:document.getElementById('f-notes').value.trim()||'',
+    spareParts:selectedSpares.map(s=>({
+      id:s.id||'',code:s.code||'',name:s.name||'',
+      partNumber:s.partNumber||'',manufacturer:s.manufacturer||'',
+      quantity:s.quantity||1,unit:s.unit||''
+    }))
+  };
+
+  // ✅ อัปเดต local state ทันที — แสดงผลก่อน Firebase
+  records.unshift(rec);
+  machineStatus[machineId]=newStatus;
+  selectedSpares.forEach(s=>{
+    spareParts=spareParts.map(sp=>sp.id===s.id?{...sp,currentStock:sp.currentStock-s.quantity}:sp);
+  });
+  lsSave();
+  closeForm();
+  renderCurrentTab();
+  updateClock();
+  showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ บันทึก Breakdown แล้ว');
+
+  // 🔄 Sync Firebase แบบ fire-and-forget (ไม่บล็อก UI)
+  db.ref('bd_records/'+recId).set(rec).catch(e=>{
+    showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false);
+  });
+  db.ref('bd_status/'+machineId).set(newStatus).catch(e=>console.warn(e));
+  if(selectedSpares.length>0){
+    const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
+    db.ref('bd_spares').set(spObj).catch(e=>console.warn(e));
+  }
+}
+
+// ── REPORTS ───────────────────────────────────────────────
+function renderReports(){
+  const now = new Date();
+  const today = now.toDateString();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+
+  // ── KPIs ──
+  const todayRecs   = records.filter(r=>new Date(r.startTime).toDateString()===today);
+  const monthRecs   = records.filter(r=>{ const d=new Date(r.startTime); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear; });
+  const resolved    = records.filter(r=>r.status==='Resolved'&&r.duration>0);
+  const avgDowntime = resolved.length ? Math.round(resolved.reduce((s,r)=>s+r.duration,0)/resolved.length) : 0;
+  const maxDowntime = resolved.length ? Math.max(...resolved.map(r=>r.duration)) : 0;
+  const cannotFix   = records.filter(r=>r.cannotFix);
+
+  // ── Breakdown by Machine (top 5) ──
+  const byMachine = {};
+  records.forEach(r=>{ byMachine[r.machineName]=(byMachine[r.machineName]||0)+1; });
+  const topMachines = Object.entries(byMachine).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxM = topMachines.length ? topMachines[0][1] : 1;
+
+  // ── Breakdown by Cause ──
+  const byCause = {};
+  records.forEach(r=>{ const k=r.cause||'ไม่ระบุ'; byCause[k]=(byCause[k]||0)+1; });
+  const topCauses = Object.entries(byCause).sort((a,b)=>b[1]-a[1]);
+
+  // ── Breakdown by Line ──
+  const byLine = {};
+  records.forEach(r=>{ byLine[r.line]=(byLine[r.line]||0)+1; });
+
+  // ── Monthly trend (last 6 months) ──
+  const months = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(thisYear, thisMonth-i, 1);
+    const m = d.getMonth(); const y = d.getFullYear();
+    const count = records.filter(r=>{ const rd=new Date(r.startTime); return rd.getMonth()===m&&rd.getFullYear()===y; }).length;
+    const label = d.toLocaleDateString('th-TH',{month:'short',year:'2-digit'});
+    months.push({label,count});
+  }
+  const maxCount = Math.max(...months.map(m=>m.count),1);
+
+  // ── Spare Parts Usage ──
+  const spareUsage = {}; // spareId -> {name, code, unit, totalQty, usedCount}
+  records.forEach(r=>{
+    (r.spareParts||[]).forEach(s=>{
+      if(!spareUsage[s.id]) spareUsage[s.id]={name:s.name,code:s.code,unit:s.unit,totalQty:0,usedCount:0};
+      spareUsage[s.id].totalQty += (s.quantity||1);
+      spareUsage[s.id].usedCount++;
+    });
+  });
+  const topSpares = Object.values(spareUsage).sort((a,b)=>b.totalQty-a.totalQty);
+
+  // ── Stock Status ──
+  const lowStock  = spareParts.filter(s=>s.currentStock < s.minStock);
+  const okStock   = spareParts.filter(s=>s.currentStock >= s.minStock);
+
+  let html = `
+  <!-- Export Button -->
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button onclick="exportExcel()" style="flex:1;padding:12px;background:linear-gradient(135deg,#1B5E20,#2E7D32);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px">
+      📥 Export รายงาน Excel
+    </button>
+  </div>
+
+  <div class="section-label">ภาพรวม</div>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-val" style="color:#F4A261">${todayRecs.length}</div><div class="kpi-unit">ครั้ง</div><div class="kpi-label">วันนี้</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#48CAE4">${monthRecs.length}</div><div class="kpi-unit">ครั้ง</div><div class="kpi-label">เดือนนี้</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#FF6D00">${fmtDur(avgDowntime)}</div><div class="kpi-unit"> </div><div class="kpi-label">Avg Downtime</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#FF1744">${fmtDur(maxDowntime)}</div><div class="kpi-unit"> </div><div class="kpi-label">Max Downtime</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#00C853">${resolved.length}</div><div class="kpi-unit">ครั้ง</div><div class="kpi-label">ซ่อมเสร็จ</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:#AA00FF">${cannotFix.length}</div><div class="kpi-unit">ครั้ง</div><div class="kpi-label">ซ่อมไม่ได้</div></div>
+  </div>
+
+  <div class="section-label" style="margin-top:4px">Trend รายเดือน (6 เดือนล่าสุด)</div>
+  <div class="card">
+    <div style="display:flex;align-items:flex-end;gap:8px;height:80px;padding-bottom:4px">
+      ${months.map(m=>{
+        const h=Math.max(4,Math.round((m.count/maxCount)*72));
+        const isNow=m.label===months[5].label;
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:10px;color:#5A7A9A">${m.count||''}</div>
+          <div style="width:100%;height:${h}px;background:${isNow?'#F4A261':'#1E3A5F'};border-radius:4px 4px 0 0"></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      ${months.map(m=>`<div style="flex:1;text-align:center;font-size:9px;color:#5A7A9A">${m.label}</div>`).join('')}
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:4px">เครื่องจักรที่ Breakdown บ่อยสุด</div>
+  <div class="card">
+    ${topMachines.length===0?'<div style="color:#5A7A9A;font-size:13px;text-align:center;padding:8px">ยังไม่มีข้อมูล</div>':
+      topMachines.map(([name,cnt],i)=>`
+      <div style="margin-bottom:${i<topMachines.length-1?'12px':'0'}">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:600">${i+1}. ${name}</span>
+          <span style="font-size:13px;color:#F4A261;font-weight:700">${cnt} ครั้ง</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round((cnt/maxM)*100)}%;background:#F4A261"></div></div>
+      </div>`).join('')}
+  </div>
+
+  <div class="section-label" style="margin-top:4px">ประเภทความเสียหาย</div>
+  <div class="card">
+    ${topCauses.length===0?'<div style="color:#5A7A9A;font-size:13px;text-align:center;padding:8px">ยังไม่มีข้อมูล</div>':
+      topCauses.map(([cause,cnt])=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1E3A5F22">
+        <span style="font-size:13px">${cause}</span>
+        <span style="font-size:13px;font-weight:700;color:#48CAE4">${cnt} ครั้ง</span>
+      </div>`).join('')}
+  </div>
+
+  <div class="section-label" style="margin-top:4px">Breakdown แยกตามไลน์</div>
+  <div class="card">
+    ${Object.keys(byLine).length===0?'<div style="color:#5A7A9A;font-size:13px;text-align:center;padding:8px">ยังไม่มีข้อมูล</div>':
+      Object.entries(byLine).sort((a,b)=>b[1]-a[1]).map(([line,cnt])=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1E3A5F22">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${lineColor(line)}"></div>
+          <span style="font-size:13px">ไลน์${line}</span>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:${lineColor(line)}">${cnt} ครั้ง</span>
+      </div>`).join('')}
+  </div>
+
+  <div class="section-label" style="margin-top:4px">📦 การใช้อะไหล่ (สะสม)</div>
+  <div class="card">
+    ${topSpares.length===0?'<div style="color:#5A7A9A;font-size:13px;text-align:center;padding:8px">ยังไม่มีการใช้อะไหล่</div>':
+      topSpares.map((s,i)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:${i<topSpares.length-1?'1px solid #1E3A5F22':'none'}">
+        <div>
+          <div style="font-size:13px;font-weight:700">${s.name}</div>
+          <div style="font-size:11px;color:#5A7A9A">${s.code} · ใช้ใน ${s.usedCount} งาน</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;color:#74C69D">${s.totalQty}</div>
+          <div style="font-size:11px;color:#5A7A9A">${s.unit}</div>
+        </div>
+      </div>`).join('')}
+  </div>
+
+  <div class="section-label" style="margin-top:4px">🗃️ Stock คงเหลือทั้งหมด</div>
+  <div class="card">
+    ${spareParts.length===0?'<div style="color:#5A7A9A;font-size:13px;text-align:center;padding:8px">ยังไม่มีข้อมูลอะไหล่</div>':
+      spareParts.map((s,i)=>{
+        const isLow=s.currentStock<s.minStock;
+        const pct=s.maxStock>0?Math.min(100,Math.round((s.currentStock/s.maxStock)*100)):null;
+        return `<div style="padding:8px 0;border-bottom:${i<spareParts.length-1?'1px solid #1E3A5F22':'none'}">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:13px;font-weight:700">${s.name}</span>
+                ${isLow?'<span style="font-size:10px;background:#FF174422;color:#FF1744;padding:1px 6px;border-radius:6px;font-weight:700;flex-shrink:0">⚠️ ต่ำ</span>':''}
+              </div>
+              <div style="font-size:11px;color:#5A7A9A">${s.code} · Min: ${s.minStock} ${s.unit}</div>
+              ${pct!==null?`<div class="progress-bar" style="margin-top:4px"><div class="progress-fill" style="width:${pct}%;background:${isLow?'#FF1744':'#74C69D'}"></div></div>`:''}
+            </div>
+            <div style="text-align:right;padding-left:12px;flex-shrink:0">
+              <div style="font-size:20px;font-weight:800;color:${isLow?'#FF1744':'#74C69D'};line-height:1">${s.currentStock}</div>
+              <div style="font-size:11px;color:#5A7A9A">${s.unit}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+  </div>
+  `;
+
+  document.getElementById('page-reports').innerHTML = html;
+}
+
+// ── EXPORT EXCEL ──────────────────────────────────────────
+function exportExcel(){
+  showToast('⏳ กำลัง Export...');
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0,10);
+
+  // Helper: แปลง array of arrays เป็น CSV string (UTF-8 BOM สำหรับ Excel ไทย)
+  function toCSV(rows){
+    return '\uFEFF' + rows.map(row =>
+      row.map(v => {
+        const s = v==null ? '' : String(v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? '"' + s.replace(/"/g,'""') + '"'
+          : s;
+      }).join(',')
+    ).join('\r\n');
+  }
+
+  function downloadCSV(filename, rows){
+    const blob = new Blob([toCSV(rows)], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
+
+  // ── ไฟล์ 1: Breakdown Records ──
+  const bdHeaders = ['ID','เครื่องจักร','ไลน์','สถานะ','ประเภท','รายละเอียด',
+    'ผู้แจ้งซ่อม','ช่างซ่อม','เวลาเริ่ม','เวลาเสร็จ','Downtime (นาที)','Downtime','ระดับ','การดำเนินการ','หมายเหตุ'];
+  const bdRows = records.map(r=>{
+    const isActive = r.status !== 'Resolved';
+    const durMin = isActive
+      ? Math.floor((Date.now() - new Date(r.startTime)) / 60000)
+      : (r.duration || Math.floor((new Date(r.endTime||Date.now()) - new Date(r.startTime)) / 60000));
+    const h = Math.floor(durMin/60), m = durMin%60;
+    return [
+      r.id, r.machineName, r.line, r.status, r.cause||'', r.detail||'',
+      r.reporter||'', r.technician||'',
+      r.startTime ? new Date(r.startTime).toLocaleString('th-TH') : '',
+      r.endTime   ? new Date(r.endTime).toLocaleString('th-TH') : (isActive?'กำลังซ่อม':''),
+      durMin,
+      h>0 ? `${h}h ${m}m` : `${m}m`,
+      r.severity||'', r.action||'', r.notes||''
+    ];
+  });
+  downloadCSV(`BFF_Breakdown_${dateStr}.csv`, [bdHeaders, ...bdRows]);
+
+  // ── ไฟล์ 2: อะไหล่ที่ใช้ ──
+  setTimeout(()=>{
+    const spHeaders = ['รหัส','ชื่ออะไหล่','หน่วย','จำนวนที่ใช้รวม','จำนวนครั้งที่ใช้'];
+    const spUsage = {};
+    records.forEach(r=>(r.spareParts||[]).forEach(s=>{
+      if(!spUsage[s.id]) spUsage[s.id]={code:s.code||s.id,name:s.name,unit:s.unit,qty:0,count:0};
+      spUsage[s.id].qty += (s.quantity||1);
+      spUsage[s.id].count++;
+    }));
+    const spRows = Object.values(spUsage).sort((a,b)=>b.qty-a.qty)
+      .map(s=>[s.code, s.name, s.unit, s.qty, s.count]);
+    downloadCSV(`BFF_SpareUsage_${dateStr}.csv`, [spHeaders, ...spRows]);
+  }, 500);
+
+  // ── ไฟล์ 3: Stock คงเหลือ ──
+  setTimeout(()=>{
+    const stHeaders = ['รหัส','Part Number','ชื่ออะไหล่','หมวดหมู่','หน่วย',
+      'Stock คงเหลือ','Stock ขั้นต่ำ','Stock สูงสุด','สถานะ','ตำแหน่งเก็บ'];
+    const stRows = spareParts.map(s=>[
+      s.code, s.partNumber||'', s.name, s.category||'', s.unit,
+      s.currentStock, s.minStock, s.maxStock||'',
+      s.currentStock < s.minStock ? 'ต่ำกว่า Min' : 'ปกติ',
+      s.location||''
+    ]);
+    downloadCSV(`BFF_Stock_${dateStr}.csv`, [stHeaders, ...stRows]);
+  }, 1000);
+
+  showToast('✅ Export 3 ไฟล์ CSV สำเร็จ — เปิดด้วย Excel ได้เลย');
+}
+let editingLine = null;
+
+// ── LOAD DEFAULT DATA ─────────────────────────────────────
+function loadDefaultData(){
+  let addedM=0, addedS=0;
+  DEFAULT_MACHINES.forEach(m=>{
+    if(!machines.find(x=>x.id===m.id)){
+      machines.push(m);
+      machineStatus[m.id]='Running';
+      db.ref('bd_machines/'+m.id).set(m).catch(e=>console.warn(e));
+      db.ref('bd_status/'+m.id).set('Running').catch(e=>console.warn(e));
+      addedM++;
+    }
+  });
+  DEFAULT_TECHS.forEach(t=>{ if(!technicians.includes(t)) technicians.push(t); });
+  db.ref('bd_techs').set(technicians).catch(e=>console.warn(e));
+  DEFAULT_SPARE_PARTS.forEach(s=>{
+    if(!spareParts.find(x=>x.id===s.id)){
+      spareParts.push(s);
+      db.ref('bd_spares/'+s.id).set(s).catch(e=>console.warn(e));
+      addedS++;
+    }
+  });
+  renderCurrentTab();
+  showToast(`✅ โหลดแล้ว: เครื่อง +${addedM}, ช่าง ${technicians.length} คน, อะไหล่ +${addedS}`);
+}
+
+function openLineForm(){
+  editingLine = null;
+  document.getElementById('lf-name').value='';
+  document.getElementById('lf-color').value='#F4A261';
+  document.getElementById('line-add-btn').textContent='+ เพิ่มไลน์';
+  renderLineList();
+  document.getElementById('line-overlay').classList.remove('hidden');
+}
+
+function closeLineForm(){
+  document.getElementById('line-overlay').classList.add('hidden');
+  editingLine = null;
+}
+
+function renderLineList(){
+  const el=document.getElementById('line-list');
+  if(!el) return;
+  const allLines = [...LINES_DEFAULT, ...customLines];
+  el.innerHTML=allLines.map(line=>{
+    const isDefault = LINES_DEFAULT.includes(line);
+    const color = lineColor(line);
+    const machineCount = machines.filter(m=>m.line===line).length;
+    return `<div class="tech-item">
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <div style="width:20px;height:20px;border-radius:4px;background:${color};flex-shrink:0"></div>
+        <div>
+          <div style="font-size:14px;font-weight:600">ไลน์${line}</div>
+          <div style="font-size:11px;color:#5A7A9A">${machineCount} เครื่องจักร${isDefault?' · ไลน์เริ่มต้น':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${!isDefault?`<button class="icon-btn" onclick="editLine('${line}')">✏️</button>`:''}
+        ${!isDefault?`<button class="icon-btn danger" onclick="confirmDeleteLineInModal('${line}')">🗑️</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addLine(){
+  const name = document.getElementById('lf-name').value.trim();
+  const color = document.getElementById('lf-color').value;
+  
+  if(!name){ showToast('⚠️ กรุณากรอกชื่อไลน์',false); return; }
+  
+  if(editingLine){
+    // editing existing
+    const idx = customLines.indexOf(editingLine);
+    if(idx>=0) customLines[idx] = name;
+    customColors[name] = color;
+    if(name !== editingLine) delete customColors[editingLine];
+    // update machines
+    machines = machines.map(m => m.line===editingLine ? {...m, line:name} : m);
+    showToast('✅ แก้ไขไลน์สำเร็จ');
+    editingLine = null;
+  } else {
+    // adding new
+    const allLines = [...LINES_DEFAULT, ...customLines];
+    if(allLines.includes(name)){ showToast('⚠️ ชื่อไลน์นี้มีอยู่แล้ว',false); return; }
+    customLines.push(name);
+    customColors[name] = color;
+    showToast('✅ เพิ่มไลน์ "'+name+'" สำเร็จ');
+  }
+  
+  persist();
+  db.ref('bd_lines').set({names:customLines, colors:customColors}).catch(e=>console.warn(e));
+  document.getElementById('lf-name').value='';
+  document.getElementById('lf-color').value='#F4A261';
+  document.getElementById('line-add-btn').textContent='+ เพิ่มไลน์';
+  renderLineList();
+  renderSettings();
+}
+
+function editLine(line){
+  const isDefault = LINES_DEFAULT.includes(line);
+  if(isDefault){
+    showToast('⚠️ ไม่สามารถแก้ไขไลน์เริ่มต้นได้',false);
+    return;
+  }
+  editingLine = line;
+  document.getElementById('lf-name').value = line;
+  document.getElementById('lf-color').value = lineColor(line);
+  document.getElementById('line-add-btn').textContent = '✓ บันทึกการแก้ไข';
+  openLineForm();
+}
+
+function confirmDeleteLineInModal(line){
+  const machineCount = machines.filter(m=>m.line===line).length;
+  if(machineCount > 0){
+    showToast(`⚠️ ไม่สามารถลบได้ มีเครื่องจักร ${machineCount} เครื่องในไลน์นี้`,false);
+    return;
+  }
+  showConfirm('ลบไลน์การผลิต', `ต้องการลบ "ไลน์${line}" ใช่หรือไม่?`, ()=>{
+    customLines = customLines.filter(l=>l!==line);
+    delete customColors[line];
+    db.ref('bd_lines').set({names:customLines, colors:customColors}).catch(e=>console.warn(e));
+    persist();
+    renderLineList();
+    renderSettings();
+    showToast('ลบไลน์แล้ว');
+  });
+}
+
+function confirmDeleteLine(line){
+  const isDefault = LINES_DEFAULT.includes(line);
+  if(isDefault){
+    showToast('⚠️ ไม่สามารถลบไลน์เริ่มต้นได้',false);
+    return;
+  }
+  const machineCount = machines.filter(m=>m.line===line).length;
+  if(machineCount > 0){
+    showToast(`⚠️ ไม่สามารถลบได้ มีเครื่องจักร ${machineCount} เครื่องในไลน์นี้`,false);
+    return;
+  }
+  showConfirm('ลบไลน์การผลิต', `ต้องการลบ "ไลน์${line}" ใช่หรือไม่?`, ()=>{
+    customLines = customLines.filter(l=>l!==line);
+    delete customColors[line];
+    db.ref('bd_lines').set({names:customLines, colors:customColors}).catch(e=>console.warn(e));
+    persist();
+    renderSettings();
+    showToast('ลบไลน์แล้ว');
+  });
+}
+
+// ── SPARE PARTS MANAGEMENT ────────────────────────────────
+let editSpareId = null;
+let spareSearchQ = '';
+let spareFilterCat = 'ทั้งหมด';
+let spareFilterStock = 'ทั้งหมด';
+
+function renderSpares(){
+  const lowStock = spareParts.filter(s => s.currentStock < s.minStock);
+  
+  let html = `
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-size:13px;color:#5A7A9A">
+      อะไหล่ทั้งหมด <strong style="color:#DDE8F4">${spareParts.length}</strong> รายการ
+      ${lowStock.length > 0 ? `· <span style="color:#FF1744">ใกล้หมด ${lowStock.length}</span>` : ''}
+    </div>
+  </div>
+
+  <input type="text" value="${spareSearchQ}" onchange="spareSearchQ=this.value;renderSpares()"
+    placeholder="🔍 ค้นหาอะไหล่..."
+    style="width:100%;padding:10px 14px;background:#13243A;border:1px solid #1E3A5F;border-radius:10px;color:#DDE8F4;font-size:14px;outline:none;margin-bottom:10px">
+
+  <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    ${['ทั้งหมด', 'ใกล้หมด'].map(f => `
+      <button onclick="spareFilterStock='${f}';renderSpares()"
+        style="padding:5px 12px;border-radius:20px;font-size:12px;border:1px solid ${spareFilterStock===f?'#48CAE4':'#1E3A5F'};background:${spareFilterStock===f?'#48CAE418':'#13243A'};color:${spareFilterStock===f?'#48CAE4':'#5A7A9A'};cursor:pointer;font-family:inherit">${f}</button>
+    `).join('')}
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    ${['ทั้งหมด', ...spareCategories].map(c => `
+      <button onclick="spareFilterCat='${c}';renderSpares()"
+        style="padding:5px 12px;border-radius:20px;font-size:11px;border:1px solid ${spareFilterCat===c?'#74C69D':'#1E3A5F'};background:${spareFilterCat===c?'#74C69D18':'#13243A'};color:${spareFilterCat===c?'#74C69D':'#5A7A9A'};cursor:pointer;font-family:inherit">${c}</button>
+    `).join('')}
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button class="add-mach-btn" style="margin:0;flex:1" onclick="openSpareForm(null)">＋ เพิ่มทีละรายการ</button>
+    <button class="add-mach-btn" style="margin:0;flex:1;color:#74C69D;border-color:#74C69D44" onclick="openSpareImport()">📥 Import Excel</button>
+  </div>`;
+
+  let filtered = spareParts.filter(s => {
+    if(spareSearchQ && !s.name.toLowerCase().includes(spareSearchQ.toLowerCase()) && 
+       !s.code.toLowerCase().includes(spareSearchQ.toLowerCase())) return false;
+    if(spareFilterCat !== 'ทั้งหมด' && s.category !== spareFilterCat) return false;
+    if(spareFilterStock === 'ใกล้หมด' && s.currentStock >= s.minStock) return false;
+    return true;
+  });
+
+  if(filtered.length === 0){
+    html += `<div class="empty"><div class="empty-icon">📦</div><div>ไม่พบอะไหล่</div></div>`;
+  } else {
+    filtered.forEach(s => {
+      const isLow = s.currentStock < s.minStock;
+      const pct = s.maxStock > 0 ? Math.min(100, (s.currentStock / s.maxStock) * 100) : 0;
+      const machText = s.compatibleMachines && s.compatibleMachines.length > 0 
+        ? s.compatibleMachines.slice(0,3).join(', ') + (s.compatibleMachines.length > 3 ? '...' : '')
+        : 'ทุกเครื่อง';
+      
+      html += `<div class="card" style="border-left:3px solid ${isLow?'#FF1744':'#74C69D'}">
+        <div class="mach-manage-row">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-weight:700;font-size:14px">${s.name}</span>
+              ${isLow ? '<span style="font-size:10px;background:#FF174422;color:#FF1744;padding:2px 6px;border-radius:6px;font-weight:700">⚠️ ใกล้หมด</span>' : ''}
+            </div>
+            <div style="font-size:11px;color:#5A7A9A;margin-bottom:2px">${s.code} · ${s.category}</div>
+            ${s.partNumber ? `<div style="font-size:11px;color:#48CAE4;margin-bottom:2px">📋 P/N: ${s.partNumber}</div>` : ''}
+            ${s.manufacturer ? `<div style="font-size:11px;color:#74C69D;margin-bottom:4px">🏭 ${s.manufacturer}</div>` : ''}
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;margin-top:${s.partNumber||s.manufacturer?'4px':'6px'}">
+              <div style="font-size:13px;color:#DDE8F4">
+                <strong style="font-size:18px;color:${isLow?'#FF1744':'#74C69D'}">${s.currentStock}</strong> ${s.unit}
+              </div>
+              <div style="font-size:11px;color:#5A7A9A">Min: ${s.minStock}${s.maxStock ? ' · Max: '+s.maxStock : ''}</div>
+            </div>
+            ${s.maxStock > 0 ? `
+              <div style="height:4px;background:#1E3A5F;border-radius:2px;overflow:hidden;margin-bottom:4px">
+                <div style="width:${pct}%;height:100%;background:${isLow?'#FF1744':'#74C69D'};border-radius:2px"></div>
+              </div>` : ''}
+            <div style="font-size:11px;color:#5A7A9A">🔧 ${machText}</div>
+            ${s.location ? `<div style="font-size:11px;color:#5A7A9A">📍 ${s.location}</div>` : ''}
+          </div>
+          <div class="mach-actions">
+            <button class="icon-btn" onclick="adjustStock('${s.id}')" title="เติม Stock">📥</button>
+            <button class="icon-btn" onclick="openSpareForm('${s.id}')" title="แก้ไข">✏️</button>
+            <button class="icon-btn danger" onclick="confirmDeleteSpare('${s.id}')" title="ลบ">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  document.getElementById('page-spares').innerHTML = html;
+}
+
+// Open spare form
+function openSpareForm(id){
+  editSpareId = id;
+  document.getElementById('spare-form-title').textContent = id ? 'แก้ไขอะไหล่' : 'เพิ่มอะไหล่';
+  
+  // Populate categories
+  const catSel = document.getElementById('sf-category');
+  catSel.innerHTML = '<option value="">-- เลือกหมวดหมู่ --</option>';
+  spareCategories.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    opt.textContent = c;
+    catSel.appendChild(opt);
+  });
+
+  // Populate units
+  const unitSel = document.getElementById('sf-unit');
+  unitSel.innerHTML = '<option value="">-- เลือกหน่วย --</option>';
+  SPARE_UNITS.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    unitSel.appendChild(opt);
+  });
+
+  // Render machine checkboxes
+  const machList = document.getElementById('sf-machines-list');
+  
+  if(id){
+    const s = spareParts.find(x => x.id === id);
+    document.getElementById('sf-code').value = s.code;
+    document.getElementById('sf-code').disabled = true;
+    document.getElementById('sf-partnum').value = s.partNumber || '';
+    document.getElementById('sf-name').value = s.name;
+    document.getElementById('sf-manufacturer').value = s.manufacturer || '';
+    document.getElementById('sf-category').value = s.category || '';
+    document.getElementById('sf-unit').value = s.unit;
+    document.getElementById('sf-stock').value = s.currentStock;
+    document.getElementById('sf-min').value = s.minStock;
+    document.getElementById('sf-max').value = s.maxStock || '';
+    document.getElementById('sf-location').value = s.location || '';
+    
+    machList.innerHTML = machines.map(m => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" value="${m.id}" ${s.compatibleMachines && s.compatibleMachines.includes(m.id) ? 'checked' : ''} style="width:18px;height:18px">
+        <span>${m.id} – ${m.name}</span>
+      </label>
+    `).join('');
+  } else {
+    document.getElementById('sf-code').value = genSpareId();
+    document.getElementById('sf-code').disabled = false;
+    document.getElementById('sf-partnum').value = '';
+    document.getElementById('sf-name').value = '';
+    document.getElementById('sf-manufacturer').value = '';
+    document.getElementById('sf-category').value = '';
+    document.getElementById('sf-unit').value = '';
+    document.getElementById('sf-stock').value = 0;
+    document.getElementById('sf-min').value = 0;
+    document.getElementById('sf-max').value = '';
+    document.getElementById('sf-location').value = '';
+    
+    machList.innerHTML = machines.map(m => `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px">
+        <input type="checkbox" value="${m.id}" style="width:18px;height:18px">
+        <span>${m.id} – ${m.name}</span>
+      </label>
+    `).join('');
+  }
+  
+  document.getElementById('spare-overlay').classList.remove('hidden');
+}
+
+function closeSpareForm(){
+  document.getElementById('spare-overlay').classList.add('hidden');
+  editSpareId = null;
+}
+
+function saveSpare(){
+  const code = document.getElementById('sf-code').value.trim().toUpperCase();
+  const partNumber = document.getElementById('sf-partnum').value.trim();
+  const name = document.getElementById('sf-name').value.trim();
+  const manufacturer = document.getElementById('sf-manufacturer').value.trim();
+  const category = document.getElementById('sf-category').value;
+  const unit = document.getElementById('sf-unit').value;
+  const stock = parseInt(document.getElementById('sf-stock').value) || 0;
+  const min = parseInt(document.getElementById('sf-min').value) || 0;
+  const max = parseInt(document.getElementById('sf-max').value) || 0;
+  const location = document.getElementById('sf-location').value.trim();
+  
+  const checkboxes = document.querySelectorAll('#sf-machines-list input[type="checkbox"]:checked');
+  const compatibleMachines = Array.from(checkboxes).map(cb => cb.value);
+  
+  if(!code || !name || !unit){ showToast('⚠️ กรุณากรอกข้อมูลที่จำเป็นให้ครบ', false); return; }
+  if(!editSpareId && spareParts.find(s => s.code === code)){ showToast('⚠️ รหัสอะไหล่นี้มีอยู่แล้ว', false); return; }
+  
+  if(editSpareId){
+    spareParts=spareParts.map(s=>s.id===editSpareId?{...s,code,partNumber,name,manufacturer,category,unit,currentStock:stock,minStock:min,maxStock:max,location,compatibleMachines}:s);
+    const updated=spareParts.find(s=>s.id===editSpareId);
+    showToast('✅ แก้ไขอะไหล่ "'+name+'" แล้ว');
+    db.ref('bd_spares/'+editSpareId).set(updated).catch(e=>console.warn(e));
+  } else {
+    const newSpare={id:code,code,partNumber,name,manufacturer,category,unit,currentStock:stock,minStock:min,maxStock:max,location,compatibleMachines};
+    spareParts.push(newSpare);
+    showToast('✅ เพิ่มอะไหล่ "'+name+'" แล้ว');
+    db.ref('bd_spares/'+code).set(newSpare).catch(e=>console.warn(e));
+  }
+  closeSpareForm();
+  renderSpares();
+}
+
+// Adjust stock (quick restock)
+function adjustStock(id){
+  const s = spareParts.find(x => x.id === id);
+  const qty = prompt(`📥 เติม Stock\n\nอะไหล่: ${s.name}\nStock ปัจจุบัน: ${s.currentStock} ${s.unit}\n\nระบุจำนวนที่ต้องการเติม:`, '10');
+  if(!qty || isNaN(qty)) return;
+  const add = parseInt(qty);
+  if(add <= 0){ showToast('⚠️ จำนวนต้องมากกว่า 0', false); return; }
+  const newStock = s.currentStock + add;
+  spareParts = spareParts.map(x => x.id === id ? {...x, currentStock: newStock} : x);
+  db.ref('bd_spares/'+id+'/currentStock').set(newStock).catch(e=>console.warn(e));
+  persist();
+  renderSpares();
+  showToast(`✅ เติม Stock +${add} ${s.unit} → รวม ${newStock} ${s.unit}`);
+}
+
+// Delete spare
+function confirmDeleteSpare(id){
+  const s = spareParts.find(x => x.id === id);
+  showConfirm('ลบอะไหล่', `ต้องการลบ "${s.name}" (${s.code}) ใช่หรือไม่?`, () => {
+    spareParts = spareParts.filter(x => x.id !== id);
+    db.ref('bd_spares/'+id).remove().catch(e=>console.warn(e));
+    persist();
+    renderSpares();
+    showToast('ลบอะไหล่แล้ว');
+  });
+}
+
+// ── SPARE PARTS IMPORT ────────────────────────────────────
+let spareImportRows = [];
+
+function openSpareImport(){
+  spareImportRows = [];
+  document.getElementById('spare-import-preview').innerHTML = '';
+  document.getElementById('spare-import-preview').classList.add('hidden');
+  document.getElementById('spare-import-btn').classList.add('hidden');
+  document.getElementById('spare-excel-file').value = '';
+  document.getElementById('spare-drop-zone').classList.remove('drag');
+  document.getElementById('spare-import-overlay').classList.remove('hidden');
+}
+
+function closeSpareImport(){
+  document.getElementById('spare-import-overlay').classList.add('hidden');
+  spareImportRows = [];
+}
+
+function handleSpareDrop(e){
+  e.preventDefault();
+  document.getElementById('spare-drop-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if(file) parseSpareExcel(file);
+}
+
+function handleSpareExcel(input){
+  if(input.files[0]) parseSpareExcel(input.files[0]);
+}
+
+function parseSpareExcel(file){
+  const isCsv = file.name.toLowerCase().endsWith('.csv');
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      if(isCsv){
+        // Parse CSV directly
+        const text = e.target.result;
+        const lines = text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
+        if(lines.length<2){ showToast('⚠️ ไฟล์ CSV ว่างเปล่า',false); return; }
+        const headers = lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+        const json = lines.slice(1).map(line=>{
+          const vals=[];
+          let cur='', inQ=false;
+          for(let i=0;i<line.length;i++){
+            const c=line[i];
+            if(c==='"'){ inQ=!inQ; }
+            else if(c===','&&!inQ){ vals.push(cur); cur=''; }
+            else cur+=c;
+          }
+          vals.push(cur);
+          const row={};
+          headers.forEach((h,i)=>{ row[h]=(vals[i]||'').trim().replace(/^"|"$/g,''); });
+          return row;
+        });
+        processSpareImport(json);
+      } else {
+        showToast('⚠️ กรุณาใช้ไฟล์ .csv (ไม่รองรับ .xlsx โดยตรง)\nExport จาก Excel เป็น CSV ก่อน',false);
+      }
+    } catch(err){
+      showToast('⚠️ ไม่สามารถอ่านไฟล์ได้: '+err.message, false);
+    }
+  };
+  if(file.name.toLowerCase().endsWith('.csv')){
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    showToast('⚠️ กรุณาใช้ไฟล์ .csv\n(Excel → Save As → CSV UTF-8)',false);
+  }
+}
+
+function processSpareImport(json){
+  if(!json || json.length === 0){ showToast('⚠️ ไม่พบข้อมูล', false); return; }
+  
+  spareImportRows = json.map(row => {
+    const keys = Object.keys(row);
+    const find = (names) => {
+      const k = keys.find(k => names.includes(k.toLowerCase().trim()));
+      return k ? String(row[k]).trim() : '';
+    };
+    
+    const machinesStr = find(['machines', 'เครื่องจักร', 'compatible']);
+    let compatibleMachines = [];
+    if(machinesStr && machinesStr.toLowerCase() !== 'all' && machinesStr !== 'ทุกเครื่อง'){
+      compatibleMachines = machinesStr.split(',').map(m => m.trim()).filter(Boolean);
+    }
+    
+    return {
+      code: find(['code', 'รหัส']).toUpperCase(),
+      partNumber: find(['part number', 'partnumber', 'p/n', 'pn', 'part no']),
+      name: find(['name', 'ชื่อ', 'spare part', 'part name']),
+      manufacturer: find(['manufacturer', 'ผู้ผลิต', 'brand', 'แบรนด์']),
+      category: find(['category', 'หมวดหมู่', 'type']),
+      unit: find(['unit', 'หน่วย']),
+      currentStock: parseInt(find(['stock', 'current stock', 'จำนวน'])) || 0,
+      minStock: parseInt(find(['min', 'min stock', 'ขั้นต่ำ'])) || 0,
+      maxStock: parseInt(find(['max', 'max stock', 'สูงสุด'])) || 0,
+      location: find(['location', 'ตำแหน่ง', 'shelf']),
+      compatibleMachines
+    };
+  }).filter(r => r.code || r.name);
+  
+  if(spareImportRows.length === 0){ showToast('⚠️ ไม่พบคอลัมน์ที่ถูกต้อง', false); return; }
+  
+  const importable = spareImportRows.filter(r => !spareRowError(r));
+  
+  let html = `
+    <div class="import-preview">
+      <div class="import-preview-header">
+        <span>พบ ${spareImportRows.length} รายการ</span>
+        <span style="color:#74C69D">${importable.length} นำเข้าได้ · <span style="color:#FF8A80">${spareImportRows.length - importable.length} มีปัญหา</span></span>
+      </div>
+      <div class="import-row" style="background:#1E3A5F22;font-size:10px;font-weight:700;color:#5A7A9A">
+        <div class="import-col id">รหัส</div>
+        <div class="import-col">ชื่อ</div>
+        <div class="import-col" style="flex:0 0 60px">Stock</div>
+        <div style="font-size:10px">สถานะ</div>
+      </div>`;
+  
+  spareImportRows.forEach(r => {
+    const err = spareRowError(r);
+    html += `<div class="import-row ${err ? 'err' : 'ok'}">
+      <div class="import-col id">${r.code || '–'}</div>
+      <div class="import-col">${r.name || '–'}</div>
+      <div class="import-col" style="flex:0 0 60px">${r.currentStock}</div>
+      <div style="font-size:10px;white-space:nowrap">${err ? '⚠️ '+err : '✓ OK'}</div>
+    </div>`;
+  });
+  html += '</div>';
+  
+  document.getElementById('spare-import-preview').innerHTML = html;
+  document.getElementById('spare-import-preview').classList.remove('hidden');
+  
+  if(importable.length > 0){
+    const btn = document.getElementById('spare-import-btn');
+    btn.textContent = `✓ นำเข้า ${importable.length} รายการ`;
+    btn.classList.remove('hidden');
+  }
+}
+
+function spareRowError(r){
+  if(!r.code) return 'ไม่มีรหัส';
+  if(!r.name) return 'ไม่มีชื่อ';
+  if(!r.unit) return 'ไม่มีหน่วย';
+  return null;
+}
+
+function confirmSpareImport(){
+  const importable = spareImportRows.filter(r => !spareRowError(r));
+  let added = 0, updated = 0;
+  
+  importable.forEach(r => {
+    const existing = spareParts.find(s => s.code === r.code);
+    if(existing){
+      spareParts = spareParts.map(s => s.code === r.code ? {...s, ...r, id: s.id} : s);
+      const upd = spareParts.find(s=>s.code===r.code);
+      db.ref('bd_spares/'+upd.id).set(upd).catch(e=>console.warn(e));
+      updated++;
+    } else {
+      const newS = {...r, id: r.code};
+      spareParts.push(newS);
+      db.ref('bd_spares/'+r.code).set(newS).catch(e=>console.warn(e));
+      added++;
+    }
+  });
+  
+  persist();
+  closeSpareImport();
+  renderSpares();
+  showToast(`✅ เพิ่ม ${added} · อัปเดต ${updated} รายการ`);
+}
+
+function downloadSpareTemplate(){
+  const rows=[
+    ['code','partNumber','name','manufacturer','category','unit','stock','min','max','location','machines'],
+    ['SP011','BA-2040','Blade Assembly','Acme Tools','Blades','ชิ้น',5,3,10,'Shelf A-1','M003,M004'],
+    ['SP012','','Belt Drive 20mm','','Belts','เมตร',15,8,25,'Shelf B-5','M001,M002'],
+    ['SP013','6205-2RS1','Bearing 6205','SKF','Bearings','ชิ้น',20,10,40,'Shelf C-3','ALL'],
+  ];
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>String(v).includes(',')?'"'+v+'"':v).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='spare_parts_template.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ── IMPORT EXCEL ──────────────────────────────────────────
+let importRows = [];
+
+function openImport(){
+  importRows=[];
+  document.getElementById('import-preview-area').innerHTML='';
+  document.getElementById('import-preview-area').classList.add('hidden');
+  document.getElementById('import-confirm-btn').classList.add('hidden');
+  document.getElementById('excel-file').value='';
+  document.getElementById('drop-zone').classList.remove('drag');
+  document.getElementById('import-overlay').classList.remove('hidden');
+}
+
+function closeImport(){
+  document.getElementById('import-overlay').classList.add('hidden');
+  importRows=[];
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  const file=e.dataTransfer.files[0];
+  if(file) parseExcel(file);
+}
+
+function handleExcelFile(input){
+  if(input.files[0]) parseExcel(input.files[0]);
+}
+
+function parseExcel(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      if(file.name.toLowerCase().endsWith('.csv')){
+        const text=e.target.result.replace(/^\uFEFF/,'');
+        const lines=text.split(/\r?\n/).filter(l=>l.trim());
+        if(lines.length<2){ showToast('⚠️ ไฟล์ว่างเปล่า',false); return; }
+        const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+        const json=lines.slice(1).map(line=>{
+          const vals=[]; let cur='',inQ=false;
+          for(let i=0;i<line.length;i++){
+            const c=line[i];
+            if(c==='"'){inQ=!inQ;}
+            else if(c===','&&!inQ){vals.push(cur);cur='';}
+            else cur+=c;
+          }
+          vals.push(cur);
+          const row={};
+          headers.forEach((h,i)=>{row[h]=(vals[i]||'').trim().replace(/^"|"$/g,'');});
+          return row;
+        });
+        processImportData(json);
+      } else {
+        showToast('⚠️ กรุณาใช้ไฟล์ .csv\n(Excel → Save As → CSV UTF-8)',false);
+      }
+    } catch(err){
+      showToast('⚠️ ไม่สามารถอ่านไฟล์ได้: '+err.message,false);
+    }
+  };
+  if(file.name.toLowerCase().endsWith('.csv')){
+    reader.readAsText(file,'UTF-8');
+  } else {
+    showToast('⚠️ กรุณาใช้ไฟล์ .csv\n(Excel → Save As → CSV UTF-8)',false);
+  }
+}
+
+function processImportData(json){
+  if(!json||json.length===0){
+    showToast('⚠️ ไม่พบข้อมูลในไฟล์',false); return;
+  }
+
+  // normalize column names (case-insensitive)
+  importRows=json.map(row=>{
+    const keys=Object.keys(row);
+    const find=(names)=>{
+      const k=keys.find(k=>names.includes(k.toLowerCase().trim()));
+      return k?String(row[k]).trim():'';
+    };
+    return {
+      id:   find(['id','รหัส','machine id','machine_id']).toUpperCase(),
+      name: find(['name','ชื่อ','machine name','machine_name','ชื่อเครื่องจักร']),
+      line: find(['line','ไลน์','production line','ไลน์การผลิต']),
+      area: find(['area','zone','พื้นที่','โซน']),
+    };
+  }).filter(r=>r.id||r.name);
+
+  if(importRows.length===0){
+    showToast('⚠️ ไม่พบคอลัมน์ที่ถูกต้อง ดาวน์โหลด Template แล้วลองใหม่',false); return;
+  }
+
+  // validate each row
+  let okCount=0, errCount=0;
+  let previewHtml=`
+    <div class="import-preview">
+      <div class="import-preview-header">
+        <span>พบ ${importRows.length} รายการ</span>
+        <span style="color:#74C69D">${importRows.filter(r=>!rowError(r)).length} นำเข้าได้ · <span style="color:#FF8A80">${importRows.filter(r=>rowError(r)).length} มีปัญหา</span></span>
+      </div>
+      <div class="import-row" style="background:#1E3A5F22;font-size:10px;font-weight:700;color:#5A7A9A">
+        <div class="import-col id">รหัส</div>
+        <div class="import-col">ชื่อเครื่องจักร</div>
+        <div class="import-col line">ไลน์</div>
+        <div style="font-size:10px;color:#5A7A9A">สถานะ</div>
+      </div>`;
+
+  importRows.forEach(r=>{
+    const err=rowError(r);
+    previewHtml+=`<div class="import-row ${err?'err':'ok'}">
+      <div class="import-col id">${r.id||'–'}</div>
+      <div class="import-col">${r.name||'–'}</div>
+      <div class="import-col line" style="color:${lineColor(r.line)}">${r.line||'–'}</div>
+      <div style="font-size:10px;white-space:nowrap">${err?'⚠️ '+err:'✓ OK'}</div>
+    </div>`;
+  });
+  previewHtml+='</div>';
+
+  const importable=importRows.filter(r=>!rowError(r));
+  const area=document.getElementById('import-preview-area');
+  area.innerHTML=previewHtml;
+  area.classList.remove('hidden');
+
+  const btn=document.getElementById('import-confirm-btn');
+  if(importable.length>0){
+    btn.textContent=`✓ นำเข้า ${importable.length} เครื่องจักร`;
+    btn.classList.remove('hidden');
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+function rowError(r){
+  if(!r.id) return 'ไม่มีรหัส';
+  if(!r.name) return 'ไม่มีชื่อ';
+  if(!r.line) return 'ไม่มีไลน์';
+  return null;
+}
+
+function confirmImport(){
+  const importable=importRows.filter(r=>!rowError(r));
+  let added=0, updated=0;
+  importable.forEach(r=>{
+    const existing=machines.find(m=>m.id===r.id);
+    if(existing){
+      machines=machines.map(m=>m.id===r.id?{...m,name:r.name,line:r.line,area:r.area}:m);
+      db.ref('bd_machines/'+r.id).update({name:r.name,line:r.line,area:r.area}).catch(e=>console.warn(e));
+      updated++;
+    } else {
+      machines.push({id:r.id,name:r.name,line:r.line,area:r.area});
+      machineStatus[r.id]='Running';
+      db.ref('bd_machines/'+r.id).set({id:r.id,name:r.name,line:r.line,area:r.area}).catch(e=>console.warn(e));
+      db.ref('bd_status/'+r.id).set('Running').catch(e=>console.warn(e));
+      added++;
+    }
+  });
+  persist();
+  closeImport();
+  renderSettings();
+  showToast(`✅ เพิ่ม ${added} · อัปเดต ${updated} เครื่องจักร`);
+}
+
+function downloadTemplate(){
+  const rows=[
+    ['id','name','line','area'],
+    ['M011','Pasteurizer #2','เนยแข็ง','Zone A'],
+    ['M012','Yogurt Fermenter #3','โยเกิร์ต','Zone B'],
+    ['M013','Packaging Line #2','ครีมชีส','Zone C'],
+  ];
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>String(v).includes(',')?'"'+v+'"':v).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='machine_template.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+// Firebase listeners above will call renderDashboard() once all data is loaded.
+// Show loading indicator in the meantime.
+updateClock();
+</script>
+</body>
+</html>
