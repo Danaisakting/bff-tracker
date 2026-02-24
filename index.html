@@ -214,6 +214,8 @@ const XLSX = (function(){
   .nav-btn.active{border-top-color:#F4A261;color:#F4A261;font-weight:700}
   .nav-icon{font-size:22px}
   .overlay{position:fixed;inset:0;background:#000c;z-index:300;overflow:auto}
+  #spare-selector-overlay{z-index:550}
+  #close-sheet{z-index:410}
   .sheet{background:#0D1B2A;min-height:100%}
   .sheet-header{background:#13243A;padding:14px 20px;border-bottom:1px solid #1E3A5F;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
   .back-btn{background:none;border:none;color:#48CAE4;font-size:22px;cursor:pointer;line-height:1;padding:0;font-family:inherit}
@@ -496,7 +498,7 @@ const XLSX = (function(){
       <div class="sheet-title">เลือกอะไหล่</div>
     </div>
     <div class="sheet-body">
-      <input type="text" id="spare-search" placeholder="🔍 ค้นหาอะไหล่..." onkeyup="renderSpareSelectorList()"
+      <input type="text" id="spare-search" placeholder="🔍 ค้นหาอะไหล่..." onkeyup="renderSpareSelectorDispatch()"
         style="width:100%;padding:10px 14px;background:#13243A;border:1px solid #1E3A5F;border-radius:10px;color:#DDE8F4;font-size:14px;outline:none;margin-bottom:10px">
       
       <div id="spare-selector-list" style="max-height:60vh;overflow-y:auto"></div>
@@ -523,8 +525,26 @@ const XLSX = (function(){
       <option value="Medium" selected>Medium</option>
       <option value="Low">Low</option>
     </select>
+    <label class="form-label">ผู้แจ้งซ่อม *</label>
+    <input class="form-input" id="f-reporter" type="text" placeholder="ชื่อ-นามสกุล หรือแผนก...">
+    <label class="form-label">ผู้รับผิดชอบ / ช่างซ่อม *</label>
+    <select class="form-input" id="f-tech"><option value="">-- เลือกช่าง --</option></select>
+    <button class="submit-btn" onclick="submitForm()">✓ บันทึก Breakdown</button>
+  </div>
+</div>
+
+<!-- CLOSE JOB OVERLAY -->
+<div class="bottom-sheet hidden" id="close-sheet" onclick="if(event.target===this) closeCloseForm()">
+  <div class="bottom-card">
+    <div class="swipe-indicator"></div>
+    <div class="bottom-header">
+      <div class="bottom-title">✅ ปิดงาน — บันทึกผลการซ่อม</div>
+      <button class="close-btn" onclick="closeCloseForm()">✕</button>
+    </div>
+    <div style="font-size:11px;color:#5A7A9A;margin-bottom:6px;text-align:center" id="close-machine-name"></div>
+
     <label class="form-label">ประเภทความเสียหาย / สาเหตุ *</label>
-    <select class="form-input" id="f-cause">
+    <select class="form-input" id="cl-cause">
       <option value="">-- เลือกประเภท --</option>
       <option>ระบบไฟฟ้า (Electrical)</option>
       <option>ระบบกล (Mechanical)</option>
@@ -535,37 +555,30 @@ const XLSX = (function(){
       <option>PM ตามแผน (Planned Maintenance)</option>
       <option>อื่นๆ (Others)</option>
     </select>
-    <label class="form-label">รายละเอียดอาการ / ปัญหา *</label>
-    <textarea class="form-input" id="f-detail" rows="3" placeholder="อธิบายอาการที่พบ ส่วนที่เสียหาย และผลกระทบต่อการผลิต..."></textarea>
-    <label class="form-label">ผู้แจ้งซ่อม *</label>
-    <input class="form-input" id="f-reporter" type="text" placeholder="ชื่อ-นามสกุล หรือแผนก...">
-    <label class="form-label">ผู้รับผิดชอบ / ช่างซ่อม *</label>
-    <select class="form-input" id="f-tech"><option value="">-- เลือกช่าง --</option></select>
-    <label class="form-label">การดำเนินการ / แผนการซ่อม</label>
-    <textarea class="form-input" id="f-action" rows="2" placeholder="ขั้นตอนการซ่อม หรืออะไหล่ที่ต้องใช้..."></textarea>
+    <label class="form-label">รายละเอียดอาการ / ปัญหาที่พบ</label>
+    <textarea class="form-input" id="cl-detail" rows="3" placeholder="อธิบายอาการที่พบ สาเหตุที่แท้จริง..."></textarea>
+    <label class="form-label">การดำเนินการ / วิธีซ่อม</label>
+    <textarea class="form-input" id="cl-action" rows="2" placeholder="ขั้นตอนการซ่อมที่ทำจริง..."></textarea>
 
-    <label class="form-label">📦 อะไหล่ที่ใช้ในการซ่อม</label>
-    <div style="font-size:11px;color:#5A7A9A;margin-bottom:8px">เลือกอะไหล่และระบุจำนวน (Stock จะถูกหักอัตโนมัติ)</div>
-    
-    <div id="quick-select-spares" style="margin-bottom:10px"></div>
-    
-    <button type="button" class="add-mach-btn" style="margin-bottom:10px" onclick="openSpareSelector()">＋ เพิ่มอะไหล่</button>
-    
-    <div id="selected-spares-list"></div>
+    <label class="form-label">📦 อะไหล่ที่ใช้</label>
+    <div style="font-size:11px;color:#5A7A9A;margin-bottom:8px">Stock จะถูกหักอัตโนมัติเมื่อปิดงาน</div>
+    <div id="cl-quick-spares" style="margin-bottom:10px"></div>
+    <button type="button" class="add-mach-btn" style="margin-bottom:10px" onclick="openSpareSelectorForClose()">＋ เพิ่มอะไหล่</button>
+    <div id="cl-selected-spares-list"></div>
 
-    <div class="cannot-fix-box off" id="cannot-box">
+    <div class="cannot-fix-box off" id="cl-cannot-box">
       <label class="cannot-label">
-        <input type="checkbox" id="f-cannot" style="width:18px;height:18px;accent-color:#AA00FF" onchange="toggleCannot()">
+        <input type="checkbox" id="cl-cannot" style="width:18px;height:18px;accent-color:#AA00FF" onchange="toggleCloseCannot()">
         <div>
-          <div class="cannot-title" id="cannot-title" style="color:#DDE8F4">🚫 ซ่อมไม่ได้ในขณะนี้</div>
+          <div class="cannot-title" id="cl-cannot-title" style="color:#DDE8F4">🚫 ซ่อมไม่ได้ในขณะนี้</div>
           <div class="cannot-sub">รออะไหล่ / รออนุมัติ / เกินความสามารถ</div>
         </div>
       </label>
-      <textarea class="form-input hidden" id="f-cannot-reason" rows="2" placeholder="ระบุเหตุผล..." style="margin-top:10px;margin-bottom:0"></textarea>
+      <textarea class="form-input hidden" id="cl-cannot-reason" rows="2" placeholder="ระบุเหตุผล..." style="margin-top:10px;margin-bottom:0"></textarea>
     </div>
     <label class="form-label">หมายเหตุเพิ่มเติม</label>
-    <textarea class="form-input" id="f-notes" rows="2" placeholder="ข้อมูลอื่นๆ ที่เกี่ยวข้อง..."></textarea>
-    <button class="submit-btn" onclick="submitForm()">✓ บันทึก Breakdown</button>
+    <textarea class="form-input" id="cl-notes" rows="2" placeholder="ข้อมูลอื่นๆ ที่เกี่ยวข้อง..."></textarea>
+    <button class="submit-btn" onclick="submitCloseForm()">✅ ยืนยันปิดงาน</button>
   </div>
 </div>
 
@@ -1376,8 +1389,7 @@ function renderDetail(){
   }
   
   let actionHtml='';
-  if(isActive&&!r.cannotFix) actionHtml=`<button class="resolve-btn" id="resolve-btn" onclick="resolveRecord('${r.id}')">✓ ซ่อมเสร็จ — ปิดงาน</button>`;
-  else if(r.cannotFix&&isActive) actionHtml=`<div style="background:#AA00FF22;border:1px solid #AA00FF66;border-radius:12px;padding:14px;text-align:center;color:#CE93D8;font-size:13px;font-weight:600">🚫 รอการอนุมัติจากผู้จัดการ</div>`;
+  if(isActive) actionHtml=`<button class="resolve-btn" id="resolve-btn" onclick="openCloseForm('${r.id}')">✓ ซ่อมเสร็จ — ปิดงาน</button>`;
   document.getElementById('detail-body').innerHTML=`
     <div class="card" style="border-left:3px solid ${sc}">
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
@@ -1395,31 +1407,238 @@ function renderDetail(){
     ${sparesHtml}${actionHtml}`;
 }
 
-function resolveRecord(id){
-  // Instant UI feedback
-  const btn = document.getElementById('resolve-btn');
-  if(btn){
-    btn.disabled = true;
-    btn.textContent = '⏳ กำลังบันทึก...';
-    btn.style.opacity = '0.6';
-  }
-  
-  records=records.map(r=>{
-    if(r.id!==id) return r;
-    const mins=elapsedMin(r.startTime);
-    machineStatus[r.machineId]='Running';
-    return {...r,status:'Resolved',endTime:new Date().toISOString(),duration:mins};
-  });
-  lsSave();
-  closeDetail();
-  showToast('✅ ซ่อมเสร็จ — ปิดงานแล้ว');
+let closeFormRecordId = null;
+let closeSelectedSpares = [];
 
-  const resolved=records.find(r=>r.id===id);
-  if(resolved){
-    db.ref('bd_records/'+id).set(resolved).catch(e=>console.warn(e));
-    db.ref('bd_status/'+resolved.machineId).set('Running').catch(e=>console.warn(e));
+function openCloseForm(id){
+  closeFormRecordId = id;
+  closeSelectedSpares = [];
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+
+  // Reset fields
+  document.getElementById('cl-cause').value = r.cause || '';
+  document.getElementById('cl-detail').value = r.detail || '';
+  document.getElementById('cl-action').value = r.action || '';
+  document.getElementById('cl-notes').value = r.notes || '';
+  document.getElementById('cl-cannot').checked = false;
+  document.getElementById('cl-cannot-reason').classList.add('hidden');
+  document.getElementById('cl-cannot-reason').value = '';
+  document.getElementById('cl-cannot-box').className = 'cannot-fix-box off';
+  document.getElementById('cl-cannot-title').style.color = '#DDE8F4';
+  document.getElementById('close-machine-name').textContent = r.machineName + ' · ไลน์' + r.line;
+
+  renderCloseQuickSpares(r.machineId);
+  renderCloseSelectedSpares();
+  document.getElementById('close-sheet').classList.remove('hidden');
+}
+
+function closeCloseForm(){
+  document.getElementById('close-sheet').classList.add('hidden');
+  closeFormRecordId = null;
+  closeSelectedSpares = [];
+}
+
+function toggleCloseCannot(){
+  const chk = document.getElementById('cl-cannot');
+  const box = document.getElementById('cl-cannot-box');
+  const reason = document.getElementById('cl-cannot-reason');
+  const title = document.getElementById('cl-cannot-title');
+  if(chk.checked){
+    box.className = 'cannot-fix-box on';
+    reason.classList.remove('hidden');
+    title.style.color = '#AA00FF';
+  } else {
+    box.className = 'cannot-fix-box off';
+    reason.classList.add('hidden');
+    title.style.color = '#DDE8F4';
   }
-  setTimeout(()=>persist(),0);
+}
+
+function renderCloseQuickSpares(machineId){
+  const el = document.getElementById('cl-quick-spares');
+  if(!el) return;
+  const compatible = spareParts.filter(s =>
+    s.compatibleMachines && s.compatibleMachines.includes(machineId)
+  );
+  if(!compatible.length){ el.innerHTML=''; return; }
+  el.innerHTML = '<div style="font-size:11px;color:#5A7A9A;margin-bottom:6px">⚡ อะไหล่แนะนำสำหรับเครื่องนี้</div>' +
+    compatible.slice(0,4).map(s=>{
+      const already = closeSelectedSpares.some(x=>x.id===s.id);
+      const isLow = s.currentStock < s.minStock;
+      const btnClick = already ? '' : 'closeQuickAdd(\'' + s.id + '\')';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#13243A;border:1px solid '+(isLow?'#FF174466':'#1E3A5F')+';border-radius:10px;margin-bottom:6px;opacity:'+(already?0.5:1)+'">'
+        +'<div>'
+        +'<div style="font-size:13px;font-weight:700">'+s.name+'</div>'
+        +'<div style="font-size:11px;color:'+(isLow?'#FF1744':'#5A7A9A')+'">Stock: '+s.currentStock+' '+s.unit+(isLow?' ⚠️':'')+'</div>'
+        +'</div>'
+        +'<button '+(btnClick?'onclick="'+btnClick+'"':'')+' style="background:'+(already?'#1E3A5F':'#74C69D22')+';border:1px solid '+(already?'#1E3A5F':'#74C69D')+';color:'+(already?'#5A7A9A':'#74C69D')+';border-radius:8px;padding:6px 12px;font-size:12px;cursor:'+(already?'not-allowed':'pointer')+'">'+(already?'✓':'＋')+'</button>'
+        +'</div>';
+    }).join('');
+}
+
+function closeQuickAdd(spareId){
+  const spare = spareParts.find(s=>s.id===spareId);
+  if(!spare || closeSelectedSpares.some(s=>s.id===spareId)) return;
+  closeSelectedSpares.push({
+    id:spare.id, code:spare.code, name:spare.name,
+    partNumber:spare.partNumber||'', manufacturer:spare.manufacturer||'',
+    unit:spare.unit, quantity:1, currentStock:spare.currentStock
+  });
+  const r = records.find(x=>x.id===closeFormRecordId);
+  if(r) renderCloseQuickSpares(r.machineId);
+  renderCloseSelectedSpares();
+}
+
+let spareSelectorContext = 'report'; // 'report' or 'close'
+
+function renderSpareSelectorDispatch(){
+  if(spareSelectorContext === 'close') renderSpareSelectorListForClose();
+  else renderSpareSelectorList();
+}
+
+function openSpareSelectorForClose(){
+  spareSelectorContext = 'close';
+  const searchEl = document.getElementById('spare-search');
+  const overlayEl = document.getElementById('spare-selector-overlay');
+  if(!searchEl || !overlayEl){ showToast('⚠️ ไม่พบ element', false); return; }
+  searchEl.value = '';
+  renderSpareSelectorListForClose();
+  overlayEl.classList.remove('hidden');
+  overlayEl.style.zIndex = '550';
+}
+
+function renderSpareSelectorListForClose(){
+  const searchQ = document.getElementById('spare-search').value.toLowerCase();
+  const filtered = spareParts.filter(s =>
+    s.name.toLowerCase().includes(searchQ) ||
+    s.code.toLowerCase().includes(searchQ) ||
+    (s.partNumber && s.partNumber.toLowerCase().includes(searchQ))
+  );
+  let html = '';
+  if(!spareParts.length){
+    html = '<div class="empty"><div class="empty-icon">📦</div><div>ยังไม่มีข้อมูลอะไหล่ในระบบ<br><small style="color:#5A7A9A">กรุณาเพิ่มอะไหล่ใน ⚙️ ตั้งค่า → อะไหล่</small></div></div>';
+  } else if(!filtered.length){
+    html = '<div class="empty"><div class="empty-icon">🔍</div><div>ไม่พบอะไหล่ที่ค้นหา</div></div>';
+  } else {
+    filtered.forEach(s=>{
+      const already = closeSelectedSpares.some(x=>x.id===s.id);
+      const isLow = s.currentStock < s.minStock;
+      const onclick = already ? '' : ' onclick="closeSelectSpare(\'' + s.id + '\')"';
+      html += '<div class="card" style="border-left:3px solid '+(isLow?'#FF1744':'#74C69D')+';opacity:'+(already?0.5:1)+';cursor:'+(already?'not-allowed':'pointer')+'"'+onclick+'>'
+        +'<div style="display:flex;justify-content:space-between;align-items:center">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-weight:700;font-size:14px">'+s.name+(already?' <span style="color:#74C69D">✓ เพิ่มแล้ว</span>':'')+'</div>'
+        +'<div style="font-size:11px;color:#5A7A9A">'+s.code+(s.partNumber?' · P/N: '+s.partNumber:'')+'</div>'
+        +(s.manufacturer?'<div style="font-size:11px;color:#74C69D">🏭 '+s.manufacturer+'</div>':'')
+        +'<div style="font-size:12px;color:'+(isLow?'#FF1744':'#DDE8F4')+';margin-top:4px">Stock: <strong>'+s.currentStock+'</strong> '+s.unit+(isLow?' ⚠️ ใกล้หมด':'')+'</div>'
+        +'</div>'
+        +(!already?'<div style="font-size:22px;color:#74C69D;padding-left:12px">＋</div>':'')
+        +'</div></div>';
+    });
+  }
+  document.getElementById('spare-selector-list').innerHTML = html;
+}
+
+function closeSelectSpare(spareId){
+  closeQuickAdd(spareId);
+  closeSpareSelector();
+}
+
+function renderCloseSelectedSpares(){
+  const el = document.getElementById('cl-selected-spares-list');
+  if(!closeSelectedSpares.length){ el.innerHTML=''; return; }
+  let html = '<div style="background:#13243A;border:1px solid #1E3A5F;border-radius:12px;padding:12px;margin-bottom:14px">';
+  closeSelectedSpares.forEach((s,idx)=>{
+    html += `<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:${idx<closeSelectedSpares.length-1?'1px solid #1E3A5F22':'none'}">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13px">${s.name}</div>
+        <div style="font-size:11px;color:#5A7A9A">${s.code}${s.partNumber?' · '+s.partNumber:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="closeSpareQtyChange(${idx},-1)" style="width:28px;height:28px;border-radius:50%;background:#1E3A5F;border:none;color:#DDE8F4;font-size:16px;cursor:pointer">−</button>
+        <input type="number" min="1" value="${s.quantity}" onchange="closeSpareQtySet(${idx},this.value)"
+          style="width:48px;text-align:center;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;padding:4px;font-size:14px">
+        <span style="font-size:12px;color:#5A7A9A">${s.unit}</span>
+        <button onclick="closeSpareQtyChange(${idx},1)" style="width:28px;height:28px;border-radius:50%;background:#1E3A5F;border:none;color:#DDE8F4;font-size:16px;cursor:pointer">＋</button>
+        <button onclick="closeSpareRemove(${idx})" style="width:28px;height:28px;border-radius:50%;background:#FF174422;border:1px solid #FF174466;color:#FF1744;font-size:14px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function closeSpareQtyChange(idx, delta){
+  closeSelectedSpares[idx].quantity = Math.max(1, closeSelectedSpares[idx].quantity + delta);
+  renderCloseSelectedSpares();
+}
+function closeSpareQtySet(idx, val){
+  closeSelectedSpares[idx].quantity = Math.max(1, parseInt(val)||1);
+  renderCloseSelectedSpares();
+}
+function closeSpareRemove(idx){
+  closeSelectedSpares.splice(idx,1);
+  const r = records.find(x=>x.id===closeFormRecordId);
+  if(r) renderCloseQuickSpares(r.machineId);
+  renderCloseSelectedSpares();
+}
+
+function submitCloseForm(){
+  if(!closeFormRecordId) return;
+  const cause = document.getElementById('cl-cause').value;
+  if(!cause){ showToast('⚠️ กรุณาเลือกประเภทความเสียหาย',false); return; }
+
+  const cannotFix = document.getElementById('cl-cannot').checked;
+  const newStatus = cannotFix ? 'Cannot Fix' : 'Resolved';
+
+  const lowStock = closeSelectedSpares.filter(s=>s.currentStock<s.quantity);
+  if(lowStock.length){
+    if(!window.confirm('⚠️ อะไหล่มี Stock ไม่พอ:\n'+lowStock.map(s=>s.name).join(', ')+'\n\nบันทึกต่อไปไหม?')) return;
+  }
+
+  records = records.map(r=>{
+    if(r.id !== closeFormRecordId) return r;
+    const mins = cannotFix ? 0 : elapsedMin(r.startTime);
+    if(!cannotFix) machineStatus[r.machineId] = 'Running';
+    return {
+      ...r,
+      cause,
+      detail: document.getElementById('cl-detail').value.trim(),
+      action: document.getElementById('cl-action').value.trim(),
+      notes: document.getElementById('cl-notes').value.trim(),
+      cannotFix, cannotFixReason: document.getElementById('cl-cannot-reason').value.trim(),
+      spareParts: closeSelectedSpares.map(s=>({
+        id:s.id, code:s.code, name:s.name,
+        partNumber:s.partNumber, manufacturer:s.manufacturer,
+        quantity:s.quantity, unit:s.unit
+      })),
+      status: newStatus,
+      endTime: cannotFix ? '' : new Date().toISOString(),
+      duration: mins
+    };
+  });
+
+  // Deduct stock
+  closeSelectedSpares.forEach(s=>{
+    spareParts = spareParts.map(sp=>sp.id===s.id?{...sp,currentStock:sp.currentStock-s.quantity}:sp);
+  });
+
+  lsSave();
+  closeCloseForm();
+  closeDetail();
+  renderCurrentTab();
+  showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ ซ่อมเสร็จ — ปิดงานแล้ว');
+
+  const updated = records.find(r=>r.id===closeFormRecordId) || records[0];
+  db.ref('bd_records/'+updated.id).set(updated).catch(e=>console.warn(e));
+  if(!cannotFix) db.ref('bd_status/'+updated.machineId).set('Running').catch(e=>console.warn(e));
+  if(closeSelectedSpares.length){
+    const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
+    db.ref('bd_spares').set(spObj).catch(e=>console.warn(e));
+  }
+  closeFormRecordId = null;
+  closeSelectedSpares = [];
 }
 
 // ── BREAKDOWN FORM ────────────────────────────────────────
@@ -1429,29 +1648,19 @@ function openForm(){
   mSel.innerHTML='<option value="">-- เลือกเครื่องจักร --</option>';
   machines.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=`${m.id} – ${m.name} (ไลน์${m.line})`; mSel.appendChild(o); });
   
-  // Add onchange event to show quick select spares
-  mSel.onchange = function(){ renderQuickSelectSpares(this.value); };
-  
   const tSel=document.getElementById('f-tech');
   tSel.innerHTML='<option value="">-- เลือกช่าง --</option>';
   technicians.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; tSel.appendChild(o); });
   const now=new Date();
   document.getElementById('form-datetime').textContent=now.toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long'})+' — '+now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.';
   
-  selectedSpares=[];
-  document.getElementById('quick-select-spares').innerHTML='';
-  document.getElementById('selected-spares-list').innerHTML='';
   document.getElementById('form-sheet').classList.remove('hidden');
 }
 
 function closeForm(){
   document.getElementById('form-sheet').classList.add('hidden');
-  ['f-machine','f-cause','f-detail','f-reporter','f-tech','f-action','f-notes','f-cannot-reason'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['f-machine','f-reporter','f-tech'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('f-severity').value='Medium';
-  document.getElementById('f-cannot').checked=false; toggleCannot();
-  selectedSpares=[];
-  document.getElementById('quick-select-spares').innerHTML='';
-  document.getElementById('selected-spares-list').innerHTML='';
 }
 
 // Swipe down to close (iOS style)
@@ -1533,6 +1742,7 @@ function quickAddSpare(spareId){
 }
 
 function openSpareSelector(){
+  spareSelectorContext = 'report';
   document.getElementById('spare-search').value = '';
   renderSpareSelectorList();
   document.getElementById('spare-selector-overlay').classList.remove('hidden');
@@ -1558,16 +1768,17 @@ function renderSpareSelectorList(){
       const alreadySelected = selectedSpares.some(sel => sel.id === s.id);
       const isLow = s.currentStock < s.minStock;
       
-      html += `<div class="card" style="border-left:3px solid ${isLow?'#FF1744':'#74C69D'};opacity:${alreadySelected?'0.5':'1'}" onclick="${alreadySelected?'':'selectSpareFromList(\''+s.id+'\')'}" style="cursor:${alreadySelected?'not-allowed':'pointer'}">
+      html += `<div class="card" style="border-left:3px solid ${isLow?'#FF1744':'#74C69D'};opacity:${alreadySelected?'0.5':'1'};cursor:${alreadySelected?'not-allowed':'pointer'}" ${alreadySelected?'':'onclick="selectSpareFromList(\''+s.id+'\')"'}>
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;font-size:14px">${s.name} ${alreadySelected?'<span style="color:#74C69D">✓</span>':''}</div>
+            <div style="font-weight:700;font-size:14px">${s.name} ${alreadySelected?'<span style="color:#74C69D">✓ เพิ่มแล้ว</span>':''}</div>
             <div style="font-size:11px;color:#5A7A9A">${s.code}${s.partNumber?' · P/N: '+s.partNumber:''}</div>
             ${s.manufacturer?`<div style="font-size:11px;color:#74C69D">🏭 ${s.manufacturer}</div>`:''}
             <div style="font-size:12px;color:${isLow?'#FF1744':'#DDE8F4'};margin-top:4px">
-              Stock: <strong>${s.currentStock}</strong> ${s.unit} ${isLow?'⚠️':''}
+              Stock: <strong>${s.currentStock}</strong> ${s.unit} ${isLow?'⚠️ ใกล้หมด':''}
             </div>
           </div>
+          ${!alreadySelected?`<div style="font-size:22px;color:#74C69D;padding-left:12px">＋</div>`:''}
         </div>
       </div>`;
     });
@@ -1631,59 +1842,34 @@ function removeSelectedSpare(idx){
 
 function submitForm(){
   const machineId=document.getElementById('f-machine').value;
-  const cause=document.getElementById('f-cause').value;
-  const detail=document.getElementById('f-detail').value.trim();
   const reporter=document.getElementById('f-reporter').value.trim();
   const tech=document.getElementById('f-tech').value;
-  if(!machineId||!cause||!detail||!reporter||!tech){ showToast('⚠️ กรุณากรอกข้อมูลที่จำเป็นให้ครบ (รวมผู้แจ้งซ่อม)',false); return; }
+  if(!machineId||!reporter||!tech){ showToast('⚠️ กรุณากรอกข้อมูลให้ครบ',false); return; }
   const m=machines.find(x=>x.id===machineId);
   if(!m){ showToast('⚠️ ไม่พบข้อมูลเครื่องจักร',false); return; }
-  const cannotFix=document.getElementById('f-cannot').checked;
-  const newStatus=cannotFix?'Cannot Fix':'Down';
-
-  const lowStockSpares=selectedSpares.filter(s=>s.currentStock<s.quantity);
-  if(lowStockSpares.length>0){
-    const ok=window.confirm('⚠️ อะไหล่มี Stock ไม่พอ:\n'+lowStockSpares.map(s=>s.name).join(', ')+'\n\nบันทึกต่อไปไหม?');
-    if(!ok) return;
-  }
 
   const recId=genId();
   const rec={
     id:recId, machineId, machineName:m.name, line:m.line,
     startTime:new Date().toISOString(), endTime:'', duration:0,
     severity:document.getElementById('f-severity').value||'Medium',
-    cause, detail, reporter, technician:tech,
-    action:document.getElementById('f-action').value.trim()||'',
-    cannotFix, cannotFixReason:document.getElementById('f-cannot-reason').value.trim()||'',
-    status:newStatus, notes:document.getElementById('f-notes').value.trim()||'',
-    spareParts:selectedSpares.map(s=>({
-      id:s.id||'',code:s.code||'',name:s.name||'',
-      partNumber:s.partNumber||'',manufacturer:s.manufacturer||'',
-      quantity:s.quantity||1,unit:s.unit||''
-    }))
+    cause:'', detail:'', reporter, technician:tech,
+    action:'', cannotFix:false, cannotFixReason:'',
+    status:'Down', notes:'', spareParts:[]
   };
 
-  // ✅ อัปเดต local state ทันที — แสดงผลก่อน Firebase
   records.unshift(rec);
-  machineStatus[machineId]=newStatus;
-  selectedSpares.forEach(s=>{
-    spareParts=spareParts.map(sp=>sp.id===s.id?{...sp,currentStock:sp.currentStock-s.quantity}:sp);
-  });
+  machineStatus[machineId]='Down';
   lsSave();
   closeForm();
   renderCurrentTab();
   updateClock();
-  showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ บันทึก Breakdown แล้ว');
+  showToast('✅ บันทึก Breakdown แล้ว');
 
-  // 🔄 Sync Firebase แบบ fire-and-forget (ไม่บล็อก UI)
   db.ref('bd_records/'+recId).set(rec).catch(e=>{
     showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false);
   });
-  db.ref('bd_status/'+machineId).set(newStatus).catch(e=>console.warn(e));
-  if(selectedSpares.length>0){
-    const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
-    db.ref('bd_spares').set(spObj).catch(e=>console.warn(e));
-  }
+  db.ref('bd_status/'+machineId).set('Down').catch(e=>console.warn(e));
 }
 
 // ── REPORTS ───────────────────────────────────────────────
