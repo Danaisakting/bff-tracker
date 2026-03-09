@@ -861,7 +861,9 @@ db.ref('bd_techs').on('value', snap => {
   else { db.ref('bd_techs').set(DEFAULT_TECHS).catch(e=>console.warn(e)); }
 });
 
+let _sparesWriting = false; // flag ป้องกัน race condition
 db.ref('bd_spares').on('value', snap => {
+  if(_sparesWriting) return; // กำลัง write อยู่ ไม่รับ update กลับ
   const data = snap.val();
   if(data){ spareParts = Object.values(data); fbUpdate(); }
   else { const o={}; DEFAULT_SPARE_PARTS.forEach(s=>o[s.id]=s); db.ref('bd_spares').set(o).catch(e=>console.warn(e)); }
@@ -1773,8 +1775,11 @@ function submitCloseForm(){
   db.ref('bd_records/'+updated.id).set(updated).catch(e=>console.warn(e));
   if(!cannotFix) db.ref('bd_status/'+updated.machineId).set(machineStatus[updated.machineId]||'Running').catch(e=>console.warn(e));
   if(closeSelectedSpares.length){
+    _sparesWriting = true;
     const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
-    db.ref('bd_spares').set(spObj).catch(e=>console.warn(e));
+    db.ref('bd_spares').set(spObj)
+      .then(()=>{ setTimeout(()=>{ _sparesWriting=false; }, 2000); })
+      .catch(e=>{ _sparesWriting=false; console.warn(e); });
   }
   closeFormRecordId = null;
   closeSelectedSpares = [];
