@@ -1650,7 +1650,7 @@ function confirmDeleteRecord(id){
     showToast('\uD83D\uDDD1\uFE0F ลบรายการแล้ว');
     _recordsWriting = true;
   db.ref('bd_records/'+id).remove()
-    .then(()=>{ setTimeout(()=>{ _recordsWriting=false; }, 3000); })
+    .then(()=>{ _recordsWriting=false; })
     .catch(e=>{ _recordsWriting=false; console.warn(e); });
   });
 }
@@ -1896,14 +1896,14 @@ function submitCloseForm(){
   const updated = records.find(r=>r.id===closeFormRecordId) || records[0];
   _recordsWriting = true;
   db.ref('bd_records/'+updated.id).set(updated)
-    .then(()=>{ setTimeout(()=>{ _recordsWriting=false; }, 3000); })
+    .then(()=>{ _recordsWriting=false; })
     .catch(e=>{ _recordsWriting=false; console.warn(e); });
   // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
   if(closeSelectedSpares.length){
     _sparesWriting = true;
     const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
     db.ref('bd_spares').set(spObj)
-      .then(()=>{ setTimeout(()=>{ _sparesWriting=false; }, 2000); })
+      .then(()=>{ _sparesWriting=false; })
       .catch(e=>{ _sparesWriting=false; console.warn(e); });
   }
   closeFormRecordId = null;
@@ -2160,7 +2160,7 @@ function submitForm(){
 
   _recordsWriting = true;
   db.ref('bd_records/'+recId).set(rec)
-    .then(()=>{ setTimeout(()=>{ _recordsWriting=false; }, 3000); })
+    .then(()=>{ _recordsWriting=false; })
     .catch(e=>{ _recordsWriting=false; showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false); });
   // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
 }
