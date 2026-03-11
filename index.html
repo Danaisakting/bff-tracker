@@ -945,7 +945,7 @@ function persist(){
   db.ref('bd_techs').set(technicians).catch(e=>console.warn('FB:techs',e));
   const recObj={}; records.forEach(r=>{ recObj[r.id]=sanitizeRec(r); });
   db.ref('bd_records').set(recObj).catch(e=>console.warn('FB:records',e));
-  db.ref('bd_status').set(machineStatus).catch(e=>console.warn('FB:status',e));
+  // bd_status ไม่จำเป็น — machineStatus rebuild จาก records อัตโนมัติ
   db.ref('bd_lines').set({names:customLines, colors:customColors}).catch(e=>console.warn('FB:lines',e));
   const spObj={}; spareParts.forEach(s=>{ spObj[s.id]=s; });
   db.ref('bd_spares').set(spObj).catch(e=>console.warn('FB:spares',e));
@@ -986,10 +986,88 @@ function showToast(msg,ok=true){
 }
 
 // ── CLOCK & ALERT ─────────────────────────────────────────
+// ── ALERT SOUND & REMINDER SYSTEM ───────────────────────────
+const STALE_HOURS = 4; // แจ้งเตือนงานค้างเกิน 4 ชั่วโมง
+let _prevDownIds = new Set(); // track IDs ที่ Down ไปแล้ว (ป้องกันเสียงซ้ำ)
+let _reminderShown = new Set(); // track IDs ที่แสดง reminder ไปแล้ว
+
+// สร้างเสียงแจ้งเตือนด้วย Web Audio API (ไม่ต้องใช้ไฟล์เสียง)
+function playAlertSound(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // เสียง 3 tone สั้นๆ แบบ alarm
+    [0, 0.15, 0.3].forEach((t, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = i === 1 ? 880 : 660;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.4, ctx.currentTime + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.12);
+      osc.start(ctx.currentTime + t);
+      osc.stop(ctx.currentTime + t + 0.12);
+    });
+  } catch(e){ console.warn('Audio not supported:', e); }
+}
+
+function checkAlertsAndReminders(){
+  const active = activeRecords();
+  const now = Date.now();
+
+  // ── 1. เสียงแจ้งเตือนเมื่อมีเครื่อง Down ใหม่ ──
+  const currentDownIds = new Set(
+    active.filter(r => r.status === 'Down').map(r => r.id)
+  );
+  let hasNewDown = false;
+  currentDownIds.forEach(id => {
+    if(!_prevDownIds.has(id)) hasNewDown = true;
+  });
+  if(hasNewDown) playAlertSound();
+  _prevDownIds = currentDownIds;
+
+  // ── 2. แจ้งเตือน popup งานค้างเกิน 4 ชั่วโมง ──
+  active.forEach(r => {
+    if(_reminderShown.has(r.id)) return; // แจ้งแล้ว ข้ามไป
+    const elapsed = (now - new Date(r.startTime)) / 3600000; // ชั่วโมง
+    if(elapsed >= STALE_HOURS){
+      _reminderShown.add(r.id);
+      const hrs = Math.floor(elapsed);
+      const label = r.eventType === 'running_maintenance' ? '🔧 ซ่อมขณะเดิน' : '⛔ Breakdown';
+      showStaleReminder(r, hrs, label);
+    }
+  });
+
+  // ลบ id ที่ปิดงานแล้วออกจาก _reminderShown (เผื่อเปิดใหม่)
+  _reminderShown.forEach(id => {
+    if(!active.find(r => r.id === id)) _reminderShown.delete(id);
+  });
+}
+
+function showStaleReminder(r, hrs, label){
+  // แสดง toast พิเศษสีเหลืองเตือนงานค้าง
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+    background:#B8860B; color:#fff; padding:12px 18px; border-radius:14px;
+    font-size:13px; font-weight:600; z-index:9999; max-width:320px;
+    box-shadow:0 4px 20px #0008; text-align:center; line-height:1.5;
+  `;
+  el.innerHTML = `⏰ งานค้างมา <strong>${hrs} ชั่วโมง</strong><br>${label} · ${r.machineName}<br><span style="font-size:11px;font-weight:400">👤 ${r.technician} — กรุณาปิดงานหรืออัปเดตสถานะ</span>`;
+  document.body.appendChild(el);
+  // กดที่ toast เพื่อเปิด detail
+  el.style.cursor = 'pointer';
+  el.onclick = () => { openDetail(r.id); el.remove(); };
+  setTimeout(() => { if(el.parentNode) el.remove(); }, 8000);
+  // เล่นเสียงเตือนเบาๆ ด้วย
+  playAlertSound();
+}
+
 function updateClock(){
   const now=new Date();
   document.getElementById('hdr-date').textContent=now.toLocaleDateString('th-TH',{day:'2-digit',month:'short',year:'numeric'});
   document.getElementById('hdr-time').textContent=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+  checkAlertsAndReminders();
   const active=activeRecords();
   const bar=document.getElementById('alert-bar');
   if(active.length>0){
@@ -1363,7 +1441,6 @@ function saveMachine(){
     machines.push({id,name,line,area});
     machineStatus[id]='Running';
     db.ref('bd_machines/'+id).set({id,name,line,area}).catch(e=>console.warn(e));
-    db.ref('bd_status/'+id).set('Running').catch(e=>console.warn(e));
     showToast('✅ เพิ่มเครื่องจักร "'+name+'" แล้ว');
   }
   closeMachForm();
@@ -1382,7 +1459,6 @@ function confirmDeleteMach(id){
       machines=machines.filter(x=>x.id!==id); 
       delete machineStatus[id]; 
       db.ref('bd_machines/'+id).remove().catch(e=>console.warn(e));
-      db.ref('bd_status/'+id).remove().catch(e=>console.warn(e));
       persist(); renderSettings(); showToast('ลบเครื่องจักรแล้ว'); 
     }
   );
@@ -2057,6 +2133,7 @@ function submitForm(){
   closeForm();
   renderCurrentTab();
   updateClock();
+  checkAlertsAndReminders();
   showToast(isRunningMaint ? '🔧 บันทึกงานซ่อมขณะเดินเครื่องแล้ว' : '✅ บันทึก Breakdown แล้ว');
 
   _recordsWriting = true;
@@ -2330,7 +2407,6 @@ function loadDefaultData(){
       machines.push(m);
       machineStatus[m.id]='Running';
       db.ref('bd_machines/'+m.id).set(m).catch(e=>console.warn(e));
-      db.ref('bd_status/'+m.id).set('Running').catch(e=>console.warn(e));
       addedM++;
     }
   });
@@ -3131,7 +3207,6 @@ function confirmImport(){
       machines.push({id:r.id,name:r.name,line:r.line,area:r.area});
       machineStatus[r.id]='Running';
       db.ref('bd_machines/'+r.id).set({id:r.id,name:r.name,line:r.line,area:r.area}).catch(e=>console.warn(e));
-      db.ref('bd_status/'+r.id).set('Running').catch(e=>console.warn(e));
       added++;
     }
   });
