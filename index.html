@@ -832,7 +832,10 @@ db.ref('.info/connected').on('value', snap => {
   });
   appInitialized=true;
   updateClock();
+  // แสดง loading จาก localStorage ทันที
   renderDashboard();
+  // ถ้า Firebase ยังไม่มาใน 3 วินาที re-render อีกครั้ง (fallback)
+  setTimeout(()=>{ if(currentTab==='dashboard') renderDashboard(); }, 3000);
 })();
 
 // ── LOCALSAVE ─────────────────────────────────────────────
@@ -856,7 +859,7 @@ db.ref('bd_machines').on('value', snap => {
   const data = snap.val();
   if(data){
     machines = Object.values(data);
-    machines.forEach(m=>{ if(!machineStatus[m.id]) machineStatus[m.id]='Running'; });
+    rebuildMachineStatus();
     fbUpdate();
   } else {
     const o={}; DEFAULT_MACHINES.forEach(m=>o[m.id]=m);
@@ -868,7 +871,7 @@ db.ref('bd_machines').on('value', snap => {
 
 let _recordsWriting = false; // flag ป้องกัน race condition
 db.ref('bd_records').on('value', snap => {
-  if(_recordsWriting) return;
+  if(_recordsWriting && records.length > 0) return; // อนุญาต first-load เสมอ
   const data = snap.val();
   records = data ? Object.values(data).map(r=>({...r, eventType:r.eventType||'breakdown'})).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
   // ── Rebuild machineStatus จาก records (single source of truth) ──
@@ -884,10 +887,12 @@ db.ref('bd_techs').on('value', snap => {
 
 let _sparesWriting = false; // flag ป้องกัน race condition
 db.ref('bd_spares').on('value', snap => {
-  if(_sparesWriting) return; // กำลัง write อยู่ ไม่รับ update กลับ
   const data = snap.val();
-  if(data){ spareParts = Object.values(data); fbUpdate(); }
-  else { const o={}; DEFAULT_SPARE_PARTS.forEach(s=>o[s.id]=s); db.ref('bd_spares').set(o).catch(e=>console.warn(e)); }
+  if(!data) { const o={}; DEFAULT_SPARE_PARTS.forEach(s=>o[s.id]=s); db.ref('bd_spares').set(o).catch(e=>console.warn(e)); return; }
+  // รับ snapshot เสมอถ้า spareParts ยังว่างอยู่ (เช่น ตอน load ครั้งแรก)
+  if(_sparesWriting && spareParts.length > 0) return;
+  spareParts = Object.values(data);
+  fbUpdate();
 });
 
 db.ref('bd_lines').on('value', snap => {
