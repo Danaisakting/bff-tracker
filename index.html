@@ -777,6 +777,7 @@ let spareFilterStock='ทั้งหมด';
 const STALE_HOURS = 4;           // แจ้งเตือนงานค้างเกิน 4 ชั่วโมง
 let _prevDownIds = new Set();    // track IDs ที่ Down ไปแล้ว (ป้องกันเสียงซ้ำ)
 let _reminderShown = new Set();  // track IDs ที่แสดง reminder ไปแล้ว
+let _appStartTime = Date.now();   // เวลาที่ app เริ่มต้น (ป้องกัน reminder ใน 15 วินาทีแรก)
 
 // ── REBUILD MACHINE STATUS FROM RECORDS ─────────────────────
 // machineStatus ไม่ได้เก็บใน Firebase แยก — คำนวณจาก records เสมอ
@@ -879,6 +880,9 @@ db.ref('bd_records').on('value', snap => {
   records = data ? Object.values(data).map(r=>({...r, eventType:r.eventType||'breakdown'})).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
   // ── Rebuild machineStatus จาก records (single source of truth) ──
   rebuildMachineStatus();
+  // ── เคลียร์ reminder สำหรับงานที่ปิดแล้ว (sync ข้ามอุปกรณ์) ──
+  const activeIds = new Set(records.filter(r=>r.status!=='Resolved').map(r=>r.id));
+  _reminderShown.forEach(id => { if(!activeIds.has(id)) _reminderShown.delete(id); });
   fbUpdate();
 });
 
@@ -1036,7 +1040,8 @@ function checkAlertsAndReminders(){
   active.forEach(r => {
     if(_reminderShown.has(r.id)) return; // แจ้งแล้ว ข้ามไป
     const elapsed = (now - new Date(r.startTime)) / 3600000; // ชั่วโมง
-    if(elapsed >= STALE_HOURS){
+    const sinceStart = (now - _appStartTime) / 1000; // วินาทีที่ผ่านมาตั้งแต่โหลดหน้า
+    if(elapsed >= STALE_HOURS && sinceStart > 15){
       _reminderShown.add(r.id);
       const hrs = Math.floor(elapsed);
       const label = r.eventType === 'running_maintenance' ? '🔧 ซ่อมขณะเดิน' : '⛔ Breakdown';
