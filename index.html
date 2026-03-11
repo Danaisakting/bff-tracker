@@ -770,6 +770,13 @@ let selectedSpares=[];
 let detailTimerInterval=null;
 let appInitialized=false;
 let adminPass='admin1234'; // default, will sync from Firebase
+let editSpareId=null;
+let spareSearchQ='';
+let spareFilterCat='ทั้งหมด';
+let spareFilterStock='ทั้งหมด';
+const STALE_HOURS = 4;           // แจ้งเตือนงานค้างเกิน 4 ชั่วโมง
+let _prevDownIds = new Set();    // track IDs ที่ Down ไปแล้ว (ป้องกันเสียงซ้ำ)
+let _reminderShown = new Set();  // track IDs ที่แสดง reminder ไปแล้ว
 
 // ── REBUILD MACHINE STATUS FROM RECORDS ─────────────────────
 // machineStatus ไม่ได้เก็บใน Firebase แยก — คำนวณจาก records เสมอ
@@ -988,9 +995,7 @@ function showToast(msg,ok=true){
 
 // ── CLOCK & ALERT ─────────────────────────────────────────
 // ── ALERT SOUND & REMINDER SYSTEM ───────────────────────────
-const STALE_HOURS = 4; // แจ้งเตือนงานค้างเกิน 4 ชั่วโมง
-let _prevDownIds = new Set(); // track IDs ที่ Down ไปแล้ว (ป้องกันเสียงซ้ำ)
-let _reminderShown = new Set(); // track IDs ที่แสดง reminder ไปแล้ว
+// _prevDownIds, _reminderShown, STALE_HOURS → moved to global declarations
 
 // สร้างเสียงแจ้งเตือนด้วย Web Audio API (ไม่ต้องใช้ไฟล์เสียง)
 function playAlertSound(){
@@ -2548,10 +2553,6 @@ function confirmDeleteLine(line){
 }
 
 // ── SPARE PARTS MANAGEMENT ────────────────────────────────
-let editSpareId = null;
-let spareSearchQ = '';
-let spareFilterCat = 'ทั้งหมด';
-let spareFilterStock = 'ทั้งหมด';
 
 function renderSpares(){
   const lowStock = spareParts.filter(s => s.currentStock < s.minStock);
