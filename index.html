@@ -545,6 +545,11 @@ const XLSX = (function(){
     <input class="form-input" id="f-reporter" type="text" placeholder="ชื่อ-นามสกุล หรือแผนก...">
     <label class="form-label">ผู้รับผิดชอบ / ช่างซ่อม *</label>
     <select class="form-input" id="f-tech"><option value="">-- เลือกช่าง --</option></select>
+
+    <!-- อะไหล่ที่ใช้ (quick select) -->
+    <div id="quick-select-spares" style="margin-bottom:6px"></div>
+    <div id="selected-spares-list"></div>
+
     <button class="submit-btn" id="form-submit-btn" onclick="submitForm()">✓ บันทึก</button>
   </div>
 </div>
@@ -845,7 +850,9 @@ db.ref('bd_machines').on('value', snap => {
   }
 });
 
+let _statusWriting = false; // flag ป้องกัน race condition
 db.ref('bd_status').on('value', snap => {
+  if(_statusWriting) return; // กำลัง write อยู่ ไม่รับ update กลับ
   if(snap.val()){ machineStatus=snap.val(); fbUpdate(); }
 });
 
@@ -1773,7 +1780,12 @@ function submitCloseForm(){
 
   const updated = records.find(r=>r.id===closeFormRecordId) || records[0];
   db.ref('bd_records/'+updated.id).set(updated).catch(e=>console.warn(e));
-  if(!cannotFix) db.ref('bd_status/'+updated.machineId).set(machineStatus[updated.machineId]||'Running').catch(e=>console.warn(e));
+  if(!cannotFix){
+    _statusWriting = true;
+    db.ref('bd_status/'+updated.machineId).set(machineStatus[updated.machineId]||'Running')
+      .then(()=>{ setTimeout(()=>{ _statusWriting=false; }, 2000); })
+      .catch(e=>{ _statusWriting=false; console.warn(e); });
+  }
   if(closeSelectedSpares.length){
     _sparesWriting = true;
     const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
@@ -1846,10 +1858,12 @@ function initSwipeGesture(){
 }
 
 function toggleCannot(){
-  const checked=document.getElementById('f-cannot').checked;
-  document.getElementById('cannot-box').className='cannot-fix-box'+(checked?'':' off');
-  document.getElementById('f-cannot-reason').classList.toggle('hidden',!checked);
-  document.getElementById('cannot-title').style.color=checked?'#CE93D8':'#DDE8F4';
+  // legacy function — null-safe
+  const el = document.getElementById('f-cannot'); if(!el) return;
+  const checked = el.checked;
+  const box = document.getElementById('cannot-box'); if(box) box.className='cannot-fix-box'+(checked?'':' off');
+  const reason = document.getElementById('f-cannot-reason'); if(reason) reason.classList.toggle('hidden',!checked);
+  const title = document.getElementById('cannot-title'); if(title) title.style.color=checked?'#CE93D8':'#DDE8F4';
 }
 
 // ── SPARE PARTS IN BREAKDOWN FORM ────────────────────────
@@ -2033,7 +2047,10 @@ function submitForm(){
   db.ref('bd_records/'+recId).set(rec).catch(e=>{
     showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false);
   });
-  db.ref('bd_status/'+machineId).set(newStatus).catch(e=>console.warn(e));
+  _statusWriting = true;
+  db.ref('bd_status/'+machineId).set(newStatus)
+    .then(()=>{ setTimeout(()=>{ _statusWriting=false; }, 2000); })
+    .catch(e=>{ _statusWriting=false; console.warn(e); });
 }
 
 // ── REPORTS ───────────────────────────────────────────────
