@@ -814,15 +814,11 @@ db.ref('.info/connected').on('value', snap => {
 
 // ── INIT ทันที จาก localStorage ──────────────────────────
 (function initNow(){
-  try {
-    const m=localStorage.getItem('bd_machines_bk'); if(m) machines=JSON.parse(m);
-    const t=localStorage.getItem('bd_techs_bk');    if(t) technicians=JSON.parse(t);
-    const sp=localStorage.getItem('bd_spares_bk');  if(sp) spareParts=JSON.parse(sp);
-    const r=localStorage.getItem('bd_records_bk');  if(r) records=JSON.parse(r);
-  } catch(e){}
-  if(!machines.length)     machines=[...DEFAULT_MACHINES];
-  if(!technicians.length)  technicians=[...DEFAULT_TECHS];
-  if(!spareParts.length)   spareParts=[...DEFAULT_SPARE_PARTS];
+  const lsParse=(key,fallback)=>{try{const v=JSON.parse(localStorage.getItem(key));return Array.isArray(v)&&v.length?v:fallback;}catch(e){return fallback;}};
+  machines     = lsParse('bd_machines_bk', [...DEFAULT_MACHINES]);
+  technicians  = lsParse('bd_techs_bk',    [...DEFAULT_TECHS]);
+  spareParts   = lsParse('bd_spares_bk',   [...DEFAULT_SPARE_PARTS]);
+  records      = lsParse('bd_records_bk',  []);
   // rebuild machineStatus จาก records ที่โหลดมา
   machines.forEach(m=>{ machineStatus[m.id]='Running'; });
   records.forEach(r=>{
