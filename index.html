@@ -880,9 +880,14 @@ db.ref('bd_records').on('value', snap => {
   records = data ? Object.values(data).map(r=>({...r, eventType:r.eventType||'breakdown'})).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
   // ── Rebuild machineStatus จาก records (single source of truth) ──
   rebuildMachineStatus();
-  // ── เคลียร์ reminder สำหรับงานที่ปิดแล้ว (sync ข้ามอุปกรณ์) ──
+  // ── เคลียร์ reminder + toast สำหรับงานที่ปิดแล้ว (sync ข้ามอุปกรณ์) ──
   const activeIds = new Set(records.filter(r=>r.status!=='Resolved').map(r=>r.id));
-  _reminderShown.forEach(id => { if(!activeIds.has(id)) _reminderShown.delete(id); });
+  _reminderShown.forEach(id => {
+    if(!activeIds.has(id)){
+      _reminderShown.delete(id);
+      removeStaleToast(id); // ลบ toast ออกจาก DOM ทันที
+    }
+  });
   fbUpdate();
 });
 
@@ -1041,7 +1046,7 @@ function checkAlertsAndReminders(){
     if(_reminderShown.has(r.id)) return; // แจ้งแล้ว ข้ามไป
     const elapsed = (now - new Date(r.startTime)) / 3600000; // ชั่วโมง
     const sinceStart = (now - _appStartTime) / 1000; // วินาทีที่ผ่านมาตั้งแต่โหลดหน้า
-    if(elapsed >= STALE_HOURS && sinceStart > 15){
+    if(elapsed >= STALE_HOURS && sinceStart > 30){
       _reminderShown.add(r.id);
       const hrs = Math.floor(elapsed);
       const label = r.eventType === 'running_maintenance' ? '🔧 ซ่อมขณะเดิน' : '⛔ Breakdown';
@@ -1056,8 +1061,10 @@ function checkAlertsAndReminders(){
 }
 
 function showStaleReminder(r, hrs, label){
-  // แสดง toast พิเศษสีเหลืองเตือนงานค้าง
+  // ถ้ามี toast ของ record นี้อยู่แล้ว ไม่ต้องซ้ำ
+  if(document.getElementById('stale-toast-'+r.id)) return;
   const el = document.createElement('div');
+  el.id = 'stale-toast-' + r.id;
   el.style.cssText = `
     position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
     background:#B8860B; color:#fff; padding:12px 18px; border-radius:14px;
@@ -1066,12 +1073,16 @@ function showStaleReminder(r, hrs, label){
   `;
   el.innerHTML = `⏰ งานค้างมา <strong>${hrs} ชั่วโมง</strong><br>${label} · ${r.machineName}<br><span style="font-size:11px;font-weight:400">👤 ${r.technician} — กรุณาปิดงานหรืออัปเดตสถานะ</span>`;
   document.body.appendChild(el);
-  // กดที่ toast เพื่อเปิด detail
   el.style.cursor = 'pointer';
   el.onclick = () => { openDetail(r.id); el.remove(); };
   setTimeout(() => { if(el.parentNode) el.remove(); }, 8000);
-  // เล่นเสียงเตือนเบาๆ ด้วย
   playAlertSound();
+}
+
+// ลบ toast ที่ค้างอยู่ใน DOM สำหรับ record id ที่ Resolved แล้ว
+function removeStaleToast(recordId){
+  const el = document.getElementById('stale-toast-' + recordId);
+  if(el) el.remove();
 }
 
 function updateClock(){
