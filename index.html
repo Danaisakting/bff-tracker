@@ -771,6 +771,15 @@ let detailTimerInterval=null;
 let appInitialized=false;
 let adminPass='admin1234'; // default, will sync from Firebase
 
+// ── REBUILD MACHINE STATUS FROM RECORDS ─────────────────────
+// machineStatus ไม่ได้เก็บใน Firebase แยก — คำนวณจาก records เสมอ
+function rebuildMachineStatus(){
+  machines.forEach(m => {
+    const activeRec = records.find(r => r.machineId===m.id && r.status!=='Resolved');
+    machineStatus[m.id] = activeRec ? activeRec.status : 'Running';
+  });
+}
+
 // ── FIREBASE SETUP ────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyDmAZhP0T8_Vl3IwnrVG-Uwij-e75FEoDA",
@@ -810,12 +819,17 @@ db.ref('.info/connected').on('value', snap => {
     const t=localStorage.getItem('bd_techs_bk');    if(t) technicians=JSON.parse(t);
     const sp=localStorage.getItem('bd_spares_bk');  if(sp) spareParts=JSON.parse(sp);
     const r=localStorage.getItem('bd_records_bk');  if(r) records=JSON.parse(r);
-    const s=localStorage.getItem('bd_status_bk');   if(s) machineStatus=JSON.parse(s);
   } catch(e){}
   if(!machines.length)     machines=[...DEFAULT_MACHINES];
   if(!technicians.length)  technicians=[...DEFAULT_TECHS];
   if(!spareParts.length)   spareParts=[...DEFAULT_SPARE_PARTS];
-  machines.forEach(m=>{ if(!machineStatus[m.id]) machineStatus[m.id]='Running'; });
+  // rebuild machineStatus จาก records ที่โหลดมา
+  machines.forEach(m=>{ machineStatus[m.id]='Running'; });
+  records.forEach(r=>{
+    if(r.status!=='Resolved' && machineStatus.hasOwnProperty(r.machineId)){
+      machineStatus[r.machineId] = r.status;
+    }
+  });
   appInitialized=true;
   updateClock();
   renderDashboard();
@@ -828,7 +842,7 @@ function lsSave(){
     localStorage.setItem('bd_techs_bk',    JSON.stringify(technicians));
     localStorage.setItem('bd_spares_bk',   JSON.stringify(spareParts));
     localStorage.setItem('bd_records_bk',  JSON.stringify(records));
-    localStorage.setItem('bd_status_bk',   JSON.stringify(machineStatus));
+    // bd_status_bk ไม่จำเป็นแล้ว — rebuild จาก records เสมอ
   } catch(e){}
 }
 
@@ -850,15 +864,15 @@ db.ref('bd_machines').on('value', snap => {
   }
 });
 
-let _statusWriting = false; // flag ป้องกัน race condition
-db.ref('bd_status').on('value', snap => {
-  if(_statusWriting) return; // กำลัง write อยู่ ไม่รับ update กลับ
-  if(snap.val()){ machineStatus=snap.val(); fbUpdate(); }
-});
+// bd_status listener ถูกยกเลิก — machineStatus คำนวณจาก records แทน (single source of truth)
 
+let _recordsWriting = false; // flag ป้องกัน race condition
 db.ref('bd_records').on('value', snap => {
+  if(_recordsWriting) return;
   const data = snap.val();
-  records = data ? Object.values(data).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
+  records = data ? Object.values(data).map(r=>({...r, eventType:r.eventType||'breakdown'})).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
+  // ── Rebuild machineStatus จาก records (single source of truth) ──
+  rebuildMachineStatus();
   fbUpdate();
 });
 
@@ -1528,7 +1542,7 @@ function confirmDeleteRecord(id){
       const stillActive = records.some(x=>x.id!==id && x.machineId===r.machineId && x.status!=='Resolved');
       if(!stillActive){
         machineStatus[r.machineId] = 'Running';
-        db.ref('bd_status/'+r.machineId).set('Running').catch(e=>console.warn(e));
+        // machineStatus rebuild จาก records อัตโนมัติเมื่อ Firebase callback ยิง
       }
     }
     records = records.filter(x=>x.id!==id);
@@ -1536,7 +1550,10 @@ function confirmDeleteRecord(id){
     closeDetail();
     renderCurrentTab();
     showToast('\uD83D\uDDD1\uFE0F ลบรายการแล้ว');
-    db.ref('bd_records/'+id).remove().catch(e=>console.warn(e));
+    _recordsWriting = true;
+  db.ref('bd_records/'+id).remove()
+    .then(()=>{ setTimeout(()=>{ _recordsWriting=false; }, 3000); })
+    .catch(e=>{ _recordsWriting=false; console.warn(e); });
   });
 }
 
@@ -1779,13 +1796,11 @@ function submitCloseForm(){
   showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ ซ่อมเสร็จ — ปิดงานแล้ว');
 
   const updated = records.find(r=>r.id===closeFormRecordId) || records[0];
-  db.ref('bd_records/'+updated.id).set(updated).catch(e=>console.warn(e));
-  if(!cannotFix){
-    _statusWriting = true;
-    db.ref('bd_status/'+updated.machineId).set(machineStatus[updated.machineId]||'Running')
-      .then(()=>{ setTimeout(()=>{ _statusWriting=false; }, 2000); })
-      .catch(e=>{ _statusWriting=false; console.warn(e); });
-  }
+  _recordsWriting = true;
+  db.ref('bd_records/'+updated.id).set(updated)
+    .then(()=>{ setTimeout(()=>{ _recordsWriting=false; }, 3000); })
+    .catch(e=>{ _recordsWriting=false; console.warn(e); });
+  // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
   if(closeSelectedSpares.length){
     _sparesWriting = true;
     const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
@@ -2044,13 +2059,11 @@ function submitForm(){
   updateClock();
   showToast(isRunningMaint ? '🔧 บันทึกงานซ่อมขณะเดินเครื่องแล้ว' : '✅ บันทึก Breakdown แล้ว');
 
-  db.ref('bd_records/'+recId).set(rec).catch(e=>{
-    showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false);
-  });
-  _statusWriting = true;
-  db.ref('bd_status/'+machineId).set(newStatus)
-    .then(()=>{ setTimeout(()=>{ _statusWriting=false; }, 2000); })
-    .catch(e=>{ _statusWriting=false; console.warn(e); });
+  _recordsWriting = true;
+  db.ref('bd_records/'+recId).set(rec)
+    .then(()=>{ setTimeout(()=>{ _recordsWriting=false; }, 3000); })
+    .catch(e=>{ _recordsWriting=false; showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false); });
+  // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
 }
 
 // ── REPORTS ───────────────────────────────────────────────
