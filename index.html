@@ -826,20 +826,16 @@ db.ref('.info/connected').on('value', snap => {
   machines     = lsParse('bd_machines_bk', [...DEFAULT_MACHINES]);
   technicians  = lsParse('bd_techs_bk',    [...DEFAULT_TECHS]);
   spareParts   = lsParse('bd_spares_bk',   [...DEFAULT_SPARE_PARTS]);
-  records      = lsParse('bd_records_bk',  []);
-  // rebuild machineStatus จาก records ที่โหลดมา
+  // *** ไม่โหลด records จาก localStorage ***
+  // records ต้องได้จาก Firebase เท่านั้น เพื่อความถูกต้อง
+  // ถ้าโหลด localStorage อาจแสดงงานเก่าที่ปิดแล้วจากอุปกรณ์อื่น
+  records = [];
+  // เคลียร์ cache เก่าทิ้ง เพื่อไม่ให้ browser รุ่นเก่า load records เก่ามา
+  try{ localStorage.removeItem('bd_records_bk'); }catch(e){}
   machines.forEach(m=>{ machineStatus[m.id]='Running'; });
-  records.forEach(r=>{
-    if(r.status!=='Resolved' && machineStatus.hasOwnProperty(r.machineId)){
-      machineStatus[r.machineId] = r.status;
-    }
-  });
   appInitialized=true;
   updateClock();
-  // แสดง loading จาก localStorage ทันที
-  renderDashboard();
-  // ถ้า Firebase ยังไม่มาใน 3 วินาที re-render อีกครั้ง (fallback)
-  setTimeout(()=>{ if(currentTab==='dashboard') renderDashboard(); }, 3000);
+  renderDashboard(); // แสดง dashboard ว่าง รอ Firebase
 })();
 
 // ── LOCALSAVE ─────────────────────────────────────────────
@@ -848,7 +844,7 @@ function lsSave(){
     localStorage.setItem('bd_machines_bk', JSON.stringify(machines));
     localStorage.setItem('bd_techs_bk',    JSON.stringify(technicians));
     localStorage.setItem('bd_spares_bk',   JSON.stringify(spareParts));
-    localStorage.setItem('bd_records_bk',  JSON.stringify(records));
+    // bd_records_bk ถูกลบแล้ว — records โหลดจาก Firebase เท่านั้น
     // bd_status_bk ไม่จำเป็นแล้ว — rebuild จาก records เสมอ
   } catch(e){}
 }
@@ -875,9 +871,34 @@ db.ref('bd_machines').on('value', snap => {
 
 let _recordsWriting = false; // flag ป้องกัน race condition
 db.ref('bd_records').on('value', snap => {
-  if(_recordsWriting && records.length > 0) return; // อนุญาต first-load เสมอ
+  // ไม่ block snapshot จากอุปกรณ์อื่นเลย — รับทุก snapshot เสมอ
   const data = snap.val();
   records = data ? Object.values(data).map(r=>({...r, eventType:r.eventType||'breakdown'})).sort((a,b)=>new Date(b.startTime)-new Date(a.startTime)) : [];
+  // ── Auto-fix: ตรวจ record ที่ค้างผิดปกติ ──
+  const now_af = Date.now();
+  let needsWrite = false;
+  records = records.map(r => {
+    // กรณี 1: มี endTime แต่ status ยังไม่ใช่ Resolved/CannotFix → force Resolved
+    if(r.endTime && r.status !== 'Resolved' && r.status !== 'Cannot Fix'){
+      console.warn('[AutoFix1]', r.machineName, r.technician, 'has endTime but status='+r.status);
+      needsWrite = true;
+      return {...r, status:'Resolved'};
+    }
+    // กรณี 2: RunningMaint เก่ากว่า 24 ชั่วโมง → น่าจะปิดไปแล้วแต่ write ล้มเหลว
+    if(r.status === 'RunningMaint' && r.startTime){
+      const ageHrs = (now_af - new Date(r.startTime)) / 3600000;
+      if(ageHrs > 24){
+        console.warn('[AutoFix2]', r.machineName, r.technician, 'RunningMaint stuck', Math.floor(ageHrs)+'h → forcing Resolved');
+        needsWrite = true;
+        return {...r, status:'Resolved', endTime: r.endTime || new Date().toISOString(), duration: 0};
+      }
+    }
+    return r;
+  });
+  if(needsWrite){
+    const fix={}; records.forEach(r=>{fix[r.id]=r;});
+    db.ref('bd_records').set(fix).catch(e=>console.warn('AutoFix write failed',e));
+  }
   // ── Rebuild machineStatus จาก records (single source of truth) ──
   rebuildMachineStatus();
   // ── เคลียร์ reminder + toast สำหรับงานที่ปิดแล้ว (sync ข้ามอุปกรณ์) ──
@@ -885,7 +906,7 @@ db.ref('bd_records').on('value', snap => {
   _reminderShown.forEach(id => {
     if(!activeIds.has(id)){
       _reminderShown.delete(id);
-      removeStaleToast(id); // ลบ toast ออกจาก DOM ทันที
+      removeStaleToast(id);
     }
   });
   fbUpdate();
@@ -902,7 +923,7 @@ db.ref('bd_spares').on('value', snap => {
   const data = snap.val();
   if(!data) { const o={}; DEFAULT_SPARE_PARTS.forEach(s=>o[s.id]=s); db.ref('bd_spares').set(o).catch(e=>console.warn(e)); return; }
   // รับ snapshot เสมอถ้า spareParts ยังว่างอยู่ (เช่น ตอน load ครั้งแรก)
-  if(_sparesWriting && spareParts.length > 0) return;
+  // รับ snapshot ทุกครั้ง ไม่ block
   spareParts = Object.values(data);
   fbUpdate();
 });
@@ -1648,10 +1669,8 @@ function confirmDeleteRecord(id){
     closeDetail();
     renderCurrentTab();
     showToast('\uD83D\uDDD1\uFE0F ลบรายการแล้ว');
-    _recordsWriting = true;
   db.ref('bd_records/'+id).remove()
-    .then(()=>{ _recordsWriting=false; })
-    .catch(e=>{ _recordsWriting=false; console.warn(e); });
+    .catch(e=>{ console.warn(e); });
   });
 }
 
@@ -1680,6 +1699,14 @@ function openCloseForm(id){
   const closeTitleEl = document.querySelector('#close-sheet .bottom-title');
   if(closeTitleEl){
     closeTitleEl.textContent = isRM_close ? '🔧 ปิดงานซ่อม — ไม่นับ Downtime' : '✅ ปิดงาน — บันทึกผลการซ่อม';
+  }
+  // RM: auto-set cause และซ่อน field ที่ไม่จำเป็น
+  const causeRow = document.getElementById('cl-cause').closest('div') || document.getElementById('cl-cause').parentElement;
+  if(isRM_close){
+    document.getElementById('cl-cause').value = 'ซ่อมขณะเดิน';
+    if(causeRow) causeRow.style.display = 'none';
+  } else {
+    if(causeRow) causeRow.style.display = '';
   }
 
   renderCloseQuickSpares(r.machineId);
@@ -1839,8 +1866,14 @@ function closeSpareRemove(idx){
 
 function submitCloseForm(){
   if(!closeFormRecordId) return;
+  const r_check = records.find(x=>x.id===closeFormRecordId);
+  const isRM_submit = r_check && r_check.eventType === 'running_maintenance';
+  // RM ไม่ต้อง validate cause — ใช้ค่า default
+  if(isRM_submit && !document.getElementById('cl-cause').value){
+    document.getElementById('cl-cause').value = 'ซ่อมขณะเดิน';
+  }
   const cause = document.getElementById('cl-cause').value;
-  if(!cause){ showToast('⚠️ กรุณาเลือกประเภทความเสียหาย',false); return; }
+  if(!cause && !isRM_submit){ showToast('⚠️ กรุณาเลือกประเภทความเสียหาย',false); return; }
 
   const cannotFix = document.getElementById('cl-cannot').checked;
   const newStatus = cannotFix ? 'Cannot Fix' : 'Resolved';
@@ -1893,18 +1926,19 @@ function submitCloseForm(){
   renderCurrentTab();
   showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ ซ่อมเสร็จ — ปิดงานแล้ว');
 
-  const updated = records.find(r=>r.id===closeFormRecordId) || records[0];
-  _recordsWriting = true;
-  db.ref('bd_records/'+updated.id).set(updated)
-    .then(()=>{ _recordsWriting=false; })
-    .catch(e=>{ _recordsWriting=false; console.warn(e); });
+  const updated = records.find(r=>r.id===closeFormRecordId);
+  if(updated){
+    db.ref('bd_records/'+updated.id).set(updated)
+      .then(()=>{ console.log('[Close] Firebase write OK:', updated.id, updated.status); })
+      .catch(e=>{ showToast('⚠️ บันทึก Firebase ไม่สำเร็จ กรุณา Reload',false); console.warn(e); });
+  } else {
+    console.warn('[Close] record not found in local array, id='+closeFormRecordId);
+  }
   // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
   if(closeSelectedSpares.length){
-    _sparesWriting = true;
     const spObj={}; spareParts.forEach(s=>{spObj[s.id]=s;});
     db.ref('bd_spares').set(spObj)
-      .then(()=>{ _sparesWriting=false; })
-      .catch(e=>{ _sparesWriting=false; console.warn(e); });
+      .catch(e=>{ console.warn(e); });
   }
   closeFormRecordId = null;
   closeSelectedSpares = [];
@@ -2158,10 +2192,8 @@ function submitForm(){
   checkAlertsAndReminders();
   showToast(isRunningMaint ? '🔧 บันทึกงานซ่อมขณะเดินเครื่องแล้ว' : '✅ บันทึก Breakdown แล้ว');
 
-  _recordsWriting = true;
   db.ref('bd_records/'+recId).set(rec)
-    .then(()=>{ _recordsWriting=false; })
-    .catch(e=>{ _recordsWriting=false; showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false); });
+    .catch(e=>{ showToast('⚠️ บันทึก local แล้ว — Firebase: '+(e.code||e.message),false); });
   // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
 }
 
