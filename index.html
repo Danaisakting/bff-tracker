@@ -1869,9 +1869,8 @@ function closeSpareRemove(idx){
 }
 
 function submitCloseForm(){
-  const _recordId = closeFormRecordId; // snapshot ก่อน event อื่นจะ reset
+  let _recordId = closeFormRecordId; // snapshot ก่อน event อื่นจะ reset
   if(!_recordId) return;
-  closeFormRecordId = _recordId; // ensure ยังมีค่าอยู่
   const r_check = records.find(x=>x.id===_recordId);
   const isRM_submit = r_check && r_check.eventType === 'running_maintenance';
   // RM ไม่ต้อง validate cause — ใช้ค่า default
