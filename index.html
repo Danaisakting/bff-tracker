@@ -555,7 +555,7 @@ const XLSX = (function(){
 </div>
 
 <!-- CLOSE JOB OVERLAY -->
-<div class="bottom-sheet hidden" id="close-sheet" onclick="if(event.target===this) closeCloseForm()">
+<div class="bottom-sheet hidden" id="close-sheet" onclick="if(event.target===this && !event._submitting) closeCloseForm()">
   <div class="bottom-card">
     <div class="swipe-indicator"></div>
     <div class="bottom-header">
@@ -599,7 +599,7 @@ const XLSX = (function(){
     </div>
     <label class="form-label">หมายเหตุเพิ่มเติม</label>
     <textarea class="form-input" id="cl-notes" rows="2" placeholder="ข้อมูลอื่นๆ ที่เกี่ยวข้อง..."></textarea>
-    <button class="submit-btn" onclick="submitCloseForm()">✅ ยืนยันปิดงาน</button>
+    <button class="submit-btn" onclick="event.stopPropagation();event._submitting=true;submitCloseForm()">✅ ยืนยันปิดงาน</button>
   </div>
 </div>
 
@@ -1719,6 +1719,10 @@ function closeCloseForm(){
   closeFormRecordId = null;
   closeSelectedSpares = [];
 }
+function hideCloseForm(){
+  // แค่ซ่อน UI ไม่ reset state (ใช้ตอน submit เพื่อไม่ให้ id หาย)
+  document.getElementById('close-sheet').classList.add('hidden');
+}
 
 function toggleCloseCannot(){
   const chk = document.getElementById('cl-cannot');
@@ -1865,8 +1869,10 @@ function closeSpareRemove(idx){
 }
 
 function submitCloseForm(){
-  if(!closeFormRecordId) return;
-  const r_check = records.find(x=>x.id===closeFormRecordId);
+  const _recordId = closeFormRecordId; // snapshot ก่อน event อื่นจะ reset
+  if(!_recordId) return;
+  closeFormRecordId = _recordId; // ensure ยังมีค่าอยู่
+  const r_check = records.find(x=>x.id===_recordId);
   const isRM_submit = r_check && r_check.eventType === 'running_maintenance';
   // RM ไม่ต้อง validate cause — ใช้ค่า default
   if(isRM_submit && !document.getElementById('cl-cause').value){
@@ -1884,12 +1890,12 @@ function submitCloseForm(){
   }
 
   records = records.map(r=>{
-    if(r.id !== closeFormRecordId) return r;
+    if(r.id !== _recordId) return r;
     const isRM = r.eventType === 'running_maintenance';
     const mins = (cannotFix || isRM) ? 0 : elapsedMin(r.startTime);
     if(!cannotFix){
       // เช็คว่ามี active record อื่นของเครื่องนี้อีกไหม (ไม่นับตัวที่กำลังปิดอยู่)
-      const otherActive = records.find(x => x.id !== closeFormRecordId && x.machineId === r.machineId && x.status !== 'Resolved');
+      const otherActive = records.find(x => x.id !== _recordId && x.machineId === r.machineId && x.status !== 'Resolved');
       if(otherActive){
         // ถ้ายังมี record อื่นค้างอยู่ → status ตามงานที่ urgent กว่า
         machineStatus[r.machineId] = otherActive.status === 'Down' ? 'Down' : otherActive.status;
@@ -1921,18 +1927,18 @@ function submitCloseForm(){
   });
 
   lsSave();
-  closeCloseForm();
+  hideCloseForm(); // ซ่อน UI แต่ยัง keep _recordId ไว้ก่อน
   closeDetail();
   renderCurrentTab();
   showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ ซ่อมเสร็จ — ปิดงานแล้ว');
 
-  const updated = records.find(r=>r.id===closeFormRecordId);
+  const updated = records.find(r=>r.id===_recordId);
   if(updated){
     db.ref('bd_records/'+updated.id).set(updated)
       .then(()=>{ console.log('[Close] Firebase write OK:', updated.id, updated.status); })
       .catch(e=>{ showToast('⚠️ บันทึก Firebase ไม่สำเร็จ กรุณา Reload',false); console.warn(e); });
   } else {
-    console.warn('[Close] record not found in local array, id='+closeFormRecordId);
+    console.warn('[Close] record not found in local array, id='+_recordId);
   }
   // machineStatus ถูก rebuild จาก records แล้ว ไม่ต้อง push bd_status แยก
   if(closeSelectedSpares.length){
@@ -1940,7 +1946,7 @@ function submitCloseForm(){
     db.ref('bd_spares').set(spObj)
       .catch(e=>{ console.warn(e); });
   }
-  closeFormRecordId = null;
+  _recordId = null;
   closeSelectedSpares = [];
 }
 
