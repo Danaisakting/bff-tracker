@@ -1703,7 +1703,7 @@ function openCloseForm(id){
   // RM: auto-set cause และซ่อน field ที่ไม่จำเป็น
   const causeRow = document.getElementById('cl-cause').closest('div') || document.getElementById('cl-cause').parentElement;
   if(isRM_close){
-    document.getElementById('cl-cause').value = 'ซ่อมขณะเดิน';
+    document.getElementById('cl-cause').value = 'PM ตามแผน (Planned Maintenance)';
     if(causeRow) causeRow.style.display = 'none';
   } else {
     if(causeRow) causeRow.style.display = '';
@@ -1870,7 +1870,7 @@ function submitCloseForm(){
   const isRM_submit = r_check && r_check.eventType === 'running_maintenance';
   // RM ไม่ต้อง validate cause — ใช้ค่า default
   if(isRM_submit && !document.getElementById('cl-cause').value){
-    document.getElementById('cl-cause').value = 'ซ่อมขณะเดิน';
+    document.getElementById('cl-cause').value = 'PM ตามแผน (Planned Maintenance)';
   }
   const cause = document.getElementById('cl-cause').value;
   if(!cause && !isRM_submit){ showToast('⚠️ กรุณาเลือกประเภทความเสียหาย',false); return; }
