@@ -1925,8 +1925,14 @@ function submitCloseForm(){
   });
 
   lsSave();
-  hideCloseForm();
-  closeDetail(); // closeDetail() เรียก renderCurrentTab() อยู่แล้ว
+  // ซ่อน UI ทั้งหมดก่อนทันที ป้องกันจอค้าง
+  document.getElementById('close-sheet').classList.add('hidden');
+  document.getElementById('detail-overlay').classList.add('hidden');
+  closeFormRecordId = null;
+  detailId = null;
+  if(detailTimerInterval){ clearInterval(detailTimerInterval); detailTimerInterval=null; }
+  closeSelectedSpares = [];
+  renderCurrentTab();
   showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ ซ่อมเสร็จ — ปิดงานแล้ว');
 
   const updated = records.find(r=>r.id===_recordId);
