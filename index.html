@@ -852,6 +852,11 @@ function lsSave(){
 // ── FIREBASE REALTIME SYNC (background) ───────────────────
 function fbUpdate(){
   lsSave();
+  // ถ้าไม่ได้เปิด detail ให้ force ซ่อน overlay ป้องกัน stuck
+  if(!detailId){
+    const ov = document.getElementById('detail-overlay');
+    if(ov && !ov.classList.contains('hidden')) ov.classList.add('hidden');
+  }
   renderCurrentTab();
 }
 
