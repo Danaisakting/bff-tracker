@@ -1666,8 +1666,7 @@ function confirmDeleteRecord(id){
     }
     records = records.filter(x=>x.id!==id);
     lsSave();
-    closeDetail();
-    renderCurrentTab();
+    closeDetail(); // closeDetail() เรียก renderCurrentTab() อยู่แล้ว
     showToast('\uD83D\uDDD1\uFE0F ลบรายการแล้ว');
   db.ref('bd_records/'+id).remove()
     .catch(e=>{ console.warn(e); });
@@ -1926,9 +1925,8 @@ function submitCloseForm(){
   });
 
   lsSave();
-  hideCloseForm(); // ซ่อน UI แต่ยัง keep _recordId ไว้ก่อน
-  closeDetail();
-  renderCurrentTab();
+  hideCloseForm();
+  closeDetail(); // closeDetail() เรียก renderCurrentTab() อยู่แล้ว
   showToast(cannotFix?'📋 บันทึกแล้ว — รอการอนุมัติ':'✅ ซ่อมเสร็จ — ปิดงานแล้ว');
 
   const updated = records.find(r=>r.id===_recordId);
