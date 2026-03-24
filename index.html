@@ -2131,7 +2131,7 @@ function renderReports(){
   // ── Spare Parts Usage ──
   const spareUsage = {}; // spareId -> {name, code, unit, totalQty, usedCount}
   AppState.records.forEach(r=>{
-    (r.AppState.spareParts||[]).forEach(s=>{
+    (r.spareParts||[]).forEach(s=>{
       if(!spareUsage[s.id]) spareUsage[s.id]={name:s.name,code:s.code,unit:s.unit,totalQty:0,usedCount:0};
       spareUsage[s.id].totalQty += (s.quantity||1);
       spareUsage[s.id].usedCount++;
@@ -2316,7 +2316,7 @@ function exportExcel(){
   setTimeout(()=>{
     const spHeaders = ['รหัส','ชื่ออะไหล่','หน่วย','จำนวนที่ใช้รวม','จำนวนครั้งที่ใช้'];
     const spUsage = {};
-    AppState.records.forEach(r=>(r.AppState.spareParts||[]).forEach(s=>{
+    AppState.records.forEach(r=>(r.spareParts||[]).forEach(s=>{
       if(!spUsage[s.id]) spUsage[s.id]={code:s.code||s.id,name:s.name,unit:s.unit,qty:0,count:0};
       spUsage[s.id].qty += (s.quantity||1);
       spUsage[s.id].count++;
