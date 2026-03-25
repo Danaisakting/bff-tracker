@@ -178,6 +178,7 @@ const XLSX = (function(){
 </script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap');
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -298,6 +299,31 @@ const XLSX = (function(){
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="position:fixed;inset:0;background:#0D1B2A;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:11px;color:#5A7A9A;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Bangkok Fine Foods</div>
+      <div style="font-size:28px;font-weight:800"><span style="color:#F4A261">Break</span>down Tracker</div>
+      <div style="font-size:12px;color:#5A7A9A;margin-top:8px">กรุณา Login เพื่อเข้าใช้งาน</div>
+    </div>
+    <div style="background:#13243A;border:1px solid #1E3A5F;border-radius:16px;padding:24px">
+      <label style="font-size:12px;color:#5A7A9A;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Email</label>
+      <input id="login-email" type="email" placeholder="email@bff.com"
+        style="width:100%;padding:12px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;font-size:16px;outline:none;font-family:inherit;margin-bottom:14px">
+      <label style="font-size:12px;color:#5A7A9A;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Password</label>
+      <input id="login-password" type="password" placeholder="••••••••"
+        style="width:100%;padding:12px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;font-size:16px;outline:none;font-family:inherit;margin-bottom:6px"
+        onkeydown="if(event.key==='Enter') doLogin()">
+      <div id="login-error" style="font-size:12px;color:#FF1744;margin-bottom:14px;min-height:18px"></div>
+      <button onclick="doLogin()" id="login-btn"
+        style="width:100%;padding:14px;background:linear-gradient(135deg,#F4A261,#E07B3A);border:none;border-radius:12px;color:#0D1B2A;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
+        🔐 เข้าสู่ระบบ
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- HEADER -->
 <div class="header">
   <div class="header-row">
@@ -317,6 +343,7 @@ const XLSX = (function(){
   <div id="fb-status-bar" style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11px;color:#5A7A9A">
     <div id="fb-dot" style="width:7px;height:7px;border-radius:50%;background:#5A7A9A;flex-shrink:0"></div>
     <span id="fb-status-text">กำลังเชื่อมต่อ Firebase...</span>
+    <button onclick="doLogout()" style="margin-left:auto;padding:3px 10px;background:transparent;border:1px solid #1E3A5F;border-radius:6px;color:#5A7A9A;font-size:10px;cursor:pointer;font-family:inherit">ออกจากระบบ</button>
   </div>
 </div>
 
@@ -773,6 +800,9 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+const auth = firebase.auth();
+// จำ session ไว้ใน localStorage
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 
 
@@ -1232,8 +1262,45 @@ function initFirebaseListeners(){
   });
 }
 
+// ── AUTH ──────────────────────────────────────────────────
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  if(!email || !password){ errEl.textContent = '⚠️ กรุณากรอก Email และ Password'; return; }
+  btn.textContent = '⏳ กำลัง Login...';
+  btn.disabled = true;
+  auth.signInWithEmailAndPassword(email, password)
+    .then(() => { errEl.textContent = ''; })
+    .catch(e => {
+      errEl.textContent = e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password'
+        ? '❌ Email หรือ Password ไม่ถูกต้อง'
+        : e.code === 'auth/user-not-found' ? '❌ ไม่พบ account นี้'
+        : '❌ ' + e.message;
+      btn.textContent = '🔐 เข้าสู่ระบบ';
+      btn.disabled = false;
+    });
+}
+
+function doLogout(){
+  auth.signOut();
+}
+
 // ── INIT ──────────────────────────────────────────────────
 function initApp(){
+  // รอ auth state ก่อน — ถ้า login แล้วเริ่มทำงาน ถ้าไม่ให้แสดง login screen
+  auth.onAuthStateChanged(user => {
+    if(user){
+      document.getElementById('login-screen').style.display = 'none';
+      startApp();
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+  });
+}
+
+function startApp(){
   // โหลด machines/techs/spares จาก localStorage (ok เพราะเปลี่ยนน้อย)
   // ไม่โหลด records — ต้องได้จาก Firebase เท่านั้น
   const lsParse = (key, fallback) => {
@@ -1268,7 +1335,7 @@ function initApp(){
 
   UI.render();
   setInterval(() => { UI.updateClock(); UI.requestRender(); }, 30000);
-}
+}  // end startApp
 
 // ── LOCALSAVE ─────────────────────────────────────────────
 function lsSave(){
@@ -1523,6 +1590,9 @@ function confirmDeleteRecord(id){
 
 // ── BREAKDOWN FORM ────────────────────────────────────────
 let selectedSpares = []; // สำหรับ new breakdown form
+let spareSearchQ = '';
+let spareFilterCat = 'ทั้งหมด';
+let spareFilterStock = 'ทั้งหมด';
 
 function selectEventType(e, type){
   AppState.currentEventType = type;
