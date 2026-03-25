@@ -1262,6 +1262,13 @@ function initFirebaseListeners(){
   });
 }
 
+// ── UI STATE GLOBALS (ต้องอยู่ก่อน initApp) ─────────────────
+const STALE_HOURS = 4;
+let spareSearchQ = '';
+let spareFilterCat = 'ทั้งหมด';
+let spareFilterStock = 'ทั้งหมด';
+let selectedSpares = []; // สำหรับ new breakdown form
+
 // ── AUTH ──────────────────────────────────────────────────
 function doLogin(){
   const email = document.getElementById('login-email').value.trim();
@@ -1464,7 +1471,7 @@ function checkAlertsAndReminders(){
   });
 }
 
-const STALE_HOURS = 4;
+// (moved to global scope)
 
 function playAlertSound(){
   try {
@@ -1589,10 +1596,10 @@ function confirmDeleteRecord(id){
 }
 
 // ── BREAKDOWN FORM ────────────────────────────────────────
-let selectedSpares = []; // สำหรับ new breakdown form
-let spareSearchQ = '';
-let spareFilterCat = 'ทั้งหมด';
-let spareFilterStock = 'ทั้งหมด';
+// (moved to global scope)
+// (moved to global scope)
+// (moved to global scope)
+// (moved to global scope)
 
 function selectEventType(e, type){
   AppState.currentEventType = type;
