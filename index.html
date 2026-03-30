@@ -312,9 +312,13 @@ const XLSX = (function(){
       <input id="login-email" type="email" placeholder="email@bff.com"
         style="width:100%;padding:12px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;font-size:16px;outline:none;font-family:inherit;margin-bottom:14px">
       <label style="font-size:12px;color:#5A7A9A;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Password</label>
-      <input id="login-password" type="password" placeholder="••••••••"
-        style="width:100%;padding:12px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;font-size:16px;outline:none;font-family:inherit;margin-bottom:6px"
-        onkeydown="if(event.key==='Enter') doLogin()">
+      <div style="position:relative">
+        <input id="login-password" type="password" placeholder="••••••••"
+          style="width:100%;padding:12px 44px 12px 14px;background:#0D1B2A;border:1px solid #1E3A5F;border-radius:8px;color:#DDE8F4;font-size:16px;outline:none;font-family:inherit;margin-bottom:6px"
+          onkeydown="if(event.key==='Enter') doLogin()">
+        <button type="button" onclick="const i=document.getElementById('login-password');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈'"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-60%);background:none;border:none;cursor:pointer;font-size:18px;padding:0">👁️</button>
+      </div>
       <div id="login-error" style="font-size:12px;color:#FF1744;margin-bottom:14px;min-height:18px"></div>
       <button onclick="doLogin()" id="login-btn"
         style="width:100%;padding:14px;background:linear-gradient(135deg,#F4A261,#E07B3A);border:none;border-radius:12px;color:#0D1B2A;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">
@@ -2338,85 +2342,134 @@ function renderReports(){
 
 // ── EXPORT EXCEL ──────────────────────────────────────────
 function exportExcel(){
-  showToast('⏳ กำลัง Export...');
+  showToast('⏳ กำลัง Export ZIP...');
   const now = new Date();
-  const dateStr = now.toISOString().slice(0,10);
+  const monthStr = now.toISOString().slice(0,7); // YYYY-MM
+  const dateStr  = now.toISOString().slice(0,10); // YYYY-MM-DD
 
-  // Helper: แปลง array of arrays เป็น CSV string (UTF-8 BOM สำหรับ Excel ไทย)
+  // ── CSV helper ──
   function toCSV(rows){
     return '\uFEFF' + rows.map(row =>
       row.map(v => {
         const s = v==null ? '' : String(v);
         return s.includes(',') || s.includes('"') || s.includes('\n')
-          ? '"' + s.replace(/"/g,'""') + '"'
-          : s;
+          ? '"' + s.replace(/"/g,'""') + '"' : s;
       }).join(',')
     ).join('\r\n');
   }
 
-  function downloadCSV(filename, rows){
-    const blob = new Blob([toCSV(rows)], {type:'text/csv;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  // ── ZIP builder (stored, no compression) ──
+  function buildZip(files){
+    const enc = new TextEncoder();
+    const parts = [], centralDir = [];
+    let offset = 0;
+    const crc32Table = (()=>{ const t=[]; for(let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=c&1?(0xEDB88320^(c>>>1)):(c>>>1);t[i]=c;} return t; })();
+    function crc32(data){ let c=0xFFFFFFFF; for(let i=0;i<data.length;i++) c=crc32Table[(c^data[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+    function u16(n){ return [n&0xFF,(n>>8)&0xFF]; }
+    function u32(n){ return [n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>24)&0xFF]; }
+    function concat(...arrays){ const out=[]; for(const a of arrays) out.push(...a); return new Uint8Array(out); }
+    for(const [name, content] of Object.entries(files)){
+      const nameBytes = enc.encode(name);
+      const data = enc.encode(content);
+      const crc = crc32(data);
+      const local = concat(
+        [0x50,0x4B,0x03,0x04],[20,0],[0,0],[0,0],[0,0],[0,0],[0,0],
+        u32(crc),u32(data.length),u32(data.length),
+        u16(nameBytes.length),[0,0],nameBytes,data
+      );
+      centralDir.push({name:nameBytes,crc,size:data.length,offset});
+      parts.push(local);
+      offset += local.length;
+    }
+    const cdParts = centralDir.map(({name,crc,size,offset}) => concat(
+      [0x50,0x4B,0x01,0x02],[20,0],[20,0],[0,0],[0,0],[0,0],[0,0],
+      u32(crc),u32(size),u32(size),u16(name.length),[0,0],[0,0],[0,0],[0,0],[0,0],[0,0,0,0],u32(offset),name
+    ));
+    const cdSize = cdParts.reduce((s,p)=>s+p.length,0);
+    const eocd = concat(
+      [0x50,0x4B,0x05,0x06],[0,0],[0,0],
+      u16(centralDir.length),u16(centralDir.length),
+      u32(cdSize),u32(offset),[0,0]
+    );
+    const all = new Uint8Array([...parts.flatMap(p=>[...p]),...cdParts.flatMap(p=>[...p]),...eocd]);
+    return new Blob([all], {type:'application/zip'});
   }
 
-  // ── ไฟล์ 1: Breakdown Records ──
+  // ── ไฟล์ 1: Breakdown Records (กรอง เฉพาะเดือนนี้) ──
   const bdHeaders = ['ID','เครื่องจักร','ไลน์','สถานะ','ประเภทงาน','สาเหตุ','รายละเอียด',
     'ผู้แจ้งซ่อม','ช่างซ่อม','เวลาเริ่ม','เวลาเสร็จ','Downtime (นาที)','Downtime','ระดับ','การดำเนินการ','หมายเหตุ'];
-  const bdRows = AppState.records.map(r=>{
-    const isActive = r.status !== 'Resolved';
-    const isRM = r.eventType === 'running_maintenance';
-    const durMin = isRM ? 0 : isActive
-      ? Math.floor((Date.now() - new Date(r.startTime)) / 60000)
-      : (r.duration || Math.floor((new Date(r.endTime||Date.now()) - new Date(r.startTime)) / 60000));
-    const h = Math.floor(durMin/60), m = durMin%60;
-    return [
-      r.id, r.machineName, r.line,
-      isRM ? 'ซ่อมขณะเดิน' : r.status,
-      isRM ? 'Running Maintenance' : 'Breakdown',
-      r.cause||'', r.detail||'',
-      r.reporter||'', r.technician||'',
-      r.startTime ? new Date(r.startTime).toLocaleString('th-TH') : '',
-      r.endTime   ? new Date(r.endTime).toLocaleString('th-TH') : (isActive?'กำลังซ่อม':''),
-      isRM ? 'ไม่นับ' : durMin,
-      isRM ? 'ไม่นับ Downtime' : (h>0 ? `${h}h ${m}m` : `${m}m`),
-      r.severity||'', r.action||'', r.notes||''
-    ];
-  });
-  downloadCSV(`BFF_Breakdown_${dateStr}.csv`, [bdHeaders, ...bdRows]);
 
-  // ── ไฟล์ 2: อะไหล่ที่ใช้ ──
-  setTimeout(()=>{
-    const spHeaders = ['รหัส','ชื่ออะไหล่','หน่วย','จำนวนที่ใช้รวม','จำนวนครั้งที่ใช้'];
-    const spUsage = {};
-    AppState.records.forEach(r=>(r.spareParts||[]).forEach(s=>{
-      if(!spUsage[s.id]) spUsage[s.id]={code:s.code||s.id,name:s.name,unit:s.unit,qty:0,count:0};
-      spUsage[s.id].qty += (s.quantity||1);
-      spUsage[s.id].count++;
-    }));
-    const spRows = Object.values(spUsage).sort((a,b)=>b.qty-a.qty)
-      .map(s=>[s.code, s.name, s.unit, s.qty, s.count]);
-    downloadCSV(`BFF_SpareUsage_${dateStr}.csv`, [spHeaders, ...spRows]);
-  }, 500);
+  // แยก records ตามเดือน
+  const byMonth = {};
+  AppState.records.forEach(r => {
+    const m = r.startTime ? r.startTime.slice(0,7) : 'unknown';
+    if(!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
+
+  // สร้าง CSV สำหรับแต่ละเดือน
+  const zipFiles = {};
+
+  Object.entries(byMonth).sort().forEach(([month, recs]) => {
+    const rows = recs.map(r => {
+      const isActive = r.status !== 'Resolved';
+      const isRM = r.eventType === 'running_maintenance';
+      const durMin = isRM ? 0 : isActive
+        ? Math.floor((Date.now() - new Date(r.startTime)) / 60000)
+        : (r.duration || Math.floor((new Date(r.endTime||Date.now()) - new Date(r.startTime)) / 60000));
+      const h = Math.floor(durMin/60), m2 = durMin%60;
+      return [
+        r.id, r.machineName, r.line,
+        isRM ? 'ซ่อมขณะเดิน' : r.status,
+        isRM ? 'Running Maintenance' : 'Breakdown',
+        r.cause||'', r.detail||'',
+        r.reporter||'', r.technician||'',
+        r.startTime ? new Date(r.startTime).toLocaleString('th-TH') : '',
+        r.endTime   ? new Date(r.endTime).toLocaleString('th-TH') : (isActive?'กำลังซ่อม':''),
+        isRM ? 'ไม่นับ' : durMin,
+        isRM ? 'ไม่นับ Downtime' : (h>0 ? `${h}h ${m2}m` : `${m2}m`),
+        r.severity||'', r.action||'', r.notes||''
+      ];
+    });
+    zipFiles[`${month}/Breakdown_${month}.csv`] = toCSV([bdHeaders, ...rows]);
+  });
+
+  // ── ไฟล์ 2: อะไหล่ที่ใช้ (รวมทั้งหมด) ──
+  const spHeaders = ['รหัส','ชื่ออะไหล่','หน่วย','จำนวนที่ใช้รวม','จำนวนครั้งที่ใช้'];
+  const spUsage = {};
+  AppState.records.forEach(r=>(r.spareParts||[]).forEach(s=>{
+    if(!spUsage[s.id]) spUsage[s.id]={code:s.code||s.id,name:s.name,unit:s.unit,qty:0,count:0};
+    spUsage[s.id].qty += (s.quantity||1);
+    spUsage[s.id].count++;
+  }));
+  const spRows = Object.values(spUsage).sort((a,b)=>b.qty-a.qty)
+    .map(s=>[s.code, s.name, s.unit, s.qty, s.count]);
+  zipFiles[`SpareUsage_${dateStr}.csv`] = toCSV([spHeaders, ...spRows]);
 
   // ── ไฟล์ 3: Stock คงเหลือ ──
-  setTimeout(()=>{
-    const stHeaders = ['รหัส','Part Number','ชื่ออะไหล่','หมวดหมู่','หน่วย',
-      'Stock คงเหลือ','Stock ขั้นต่ำ','Stock สูงสุด','สถานะ','ตำแหน่งเก็บ'];
-    const stRows = AppState.spareParts.map(s=>[
-      s.code, s.partNumber||'', s.name, s.category||'', s.unit,
-      s.currentStock, s.minStock, s.maxStock||'',
-      s.currentStock < s.minStock ? 'ต่ำกว่า Min' : 'ปกติ',
-      s.location||''
-    ]);
-    downloadCSV(`BFF_Stock_${dateStr}.csv`, [stHeaders, ...stRows]);
-  }, 1000);
+  const stHeaders = ['รหัส','Part Number','ชื่ออะไหล่','หมวดหมู่','หน่วย',
+    'Stock คงเหลือ','Stock ขั้นต่ำ','Stock สูงสุด','สถานะ','ตำแหน่งเก็บ'];
+  const stRows = AppState.spareParts.map(s=>[
+    s.code, s.partNumber||'', s.name, s.category||'', s.unit,
+    s.currentStock, s.minStock, s.maxStock||'',
+    s.currentStock < s.minStock ? 'ต่ำกว่า Min' : 'ปกติ',
+    s.location||''
+  ]);
+  zipFiles[`Stock_${dateStr}.csv`] = toCSV([stHeaders, ...stRows]);
 
-  showToast('✅ Export 3 ไฟล์ CSV สำเร็จ — เปิดด้วย Excel ได้เลย');
+  // ── Download ZIP ──
+  const zipBlob = buildZip(zipFiles);
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `BFF_Report_${dateStr}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+
+  const monthCount = Object.keys(byMonth).length;
+  showToast(`✅ Export ZIP สำเร็จ — ${monthCount} เดือน + Stock + อะไหล่`);
 }
 let editingLine = null;
 
@@ -2683,7 +2736,7 @@ function openSpareForm(id){
   });
 
   // Render machine checkboxes
-  const machList = document.getElementById('sf-AppState.machines-list');
+  const machList = document.getElementById('sf-machines-list');
   
   if(id){
     const s = AppState.spareParts.find(x => x.id === id);
@@ -2746,7 +2799,7 @@ function saveSpare(){
   const max = parseInt(document.getElementById('sf-max').value) || 0;
   const location = document.getElementById('sf-location').value.trim();
   
-  const checkboxes = document.querySelectorAll('#sf-AppState.machines-list input[type="checkbox"]:checked');
+  const checkboxes = document.querySelectorAll('#sf-machines-list input[type="checkbox"]:checked');
   const compatibleMachines = Array.from(checkboxes).map(cb => cb.value);
   
   if(!code || !name || !unit){ showToast('⚠️ กรุณากรอกข้อมูลที่จำเป็นให้ครบ', false); return; }
